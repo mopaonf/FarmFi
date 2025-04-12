@@ -15,7 +15,7 @@ const AccountScreen: React.FC = () => {
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
       logout();
-      router.replace('/auth'); // Updated navigation path
+      router.replace('/(auth)'); // Updated navigation path
    };
 
    return (
