@@ -319,6 +319,7 @@ export const mockFarmerGeoData = [
 
 export const projects = [
    {
+      id: 1, // Added id
       title: 'Maize Farm Project',
       status: 'Active',
       progress: 65,
@@ -334,6 +335,7 @@ export const projects = [
          'The project aims to cultivate 50 hectares of high-yield hybrid maize using mechanized farming techniques. This will increase food production and contribute to regional food security while creating seasonal jobs for local workers. The harvested maize will be distributed to processing partners for flour and animal feed.',
    },
    {
+      id: 2, // Added id
       title: 'Tomato Greenhouse Project',
       status: 'Under Review',
       progress: 40,
@@ -349,6 +351,7 @@ export const projects = [
          'This project focuses on controlled greenhouse cultivation of tomatoes to ensure year-round supply and reduce seasonal shortages. The facility will use drip irrigation, automated ventilation, and pest-resistant varieties. Expected yield is 5 tons per month, with partnerships already secured with local grocery chains.',
    },
    {
+      id: 3, // Added id
       title: 'Cassava Processing Plant',
       status: 'Completed',
       progress: 100,
@@ -364,6 +367,7 @@ export const projects = [
          'The facility transforms raw cassava roots into high-quality flour, chips, and starch. Built to reduce post-harvest losses and improve farmer income, the plant processes 20 tons daily and serves over 800 outgrowers. All environmental standards were met, and community employment rose by 30%.',
    },
    {
+      id: 4, // Added id
       title: 'Poultry Expansion Initiative',
       status: 'Active',
       progress: 75,
@@ -379,6 +383,7 @@ export const projects = [
          'This expansion will increase the poultry farm’s capacity from 2,000 to 6,000 birds, with improved ventilation, automatic feeders, and biosecurity systems. Eggs and broilers are sold to institutional buyers. Local feed suppliers and veterinary partners support the project ecosystem.',
    },
    {
+      id: 5, // Added id
       title: 'Fish Farm Project',
       status: 'Pending',
       progress: 20,
@@ -394,6 +399,7 @@ export const projects = [
          'This aquaculture initiative includes construction of six earthen ponds and installation of aeration systems for catfish and tilapia farming. The project introduces sustainable aquaculture practices to meet rising protein demand in urban markets. It includes training for 20 youth apprentices.',
    },
    {
+      id: 6, // Added id
       title: 'Bee Farming for Honey Production',
       status: 'Active',
       progress: 55,
@@ -407,5 +413,92 @@ export const projects = [
       timestamp: '2024-02-15',
       documentation:
          'This project involves the setup of 80 modern hives and processing equipment to produce organic honey and beeswax. Benefiting both agriculture (via pollination) and health sectors, it also trains local women on packaging and cooperative management for export readiness.',
+   },
+];
+
+export const mockUpdates = [
+   {
+      _id: 'u1',
+      project: { id: 1, title: 'Maize Farm Project' }, // Changed _id to id to match projects
+      text_content:
+         'Completed planting on the expanded 5-acre section. Initial soil preparation and seeding complete.',
+      milestone_type: 'planting',
+      media: [maizeImage1, maizeImage2],
+      createdAt: '2025-04-10T10:30:00',
+   },
+   {
+      _id: 'u2',
+      project: { id: 4, title: 'Poultry Expansion Initiative' },
+      text_content:
+         'Successfully completed the first batch delivery. Market response exceeded expectations.',
+      milestone_type: 'delivery',
+      media: [poultryImage1, poultryImage2],
+      createdAt: '2025-04-05T14:45:00',
+   },
+   {
+      _id: 'u3',
+      project: { id: 6, title: 'Bee Farming for Honey Production' },
+      text_content: 'Installed new hives and started honey production.',
+      milestone_type: 'installation',
+      media: [
+         'https://via.placeholder.com/400x320?text=Installation+Phase+1',
+         'https://via.placeholder.com/400x320?text=Installation+Phase+2',
+      ],
+      createdAt: '2025-04-08T09:00:00',
+   },
+   {
+      _id: 'u4',
+      project: { id: 1, title: 'Maize Farm Project' },
+      text_content: 'Germination phase started; 80% sprouting observed.',
+      milestone_type: 'growth_monitoring',
+      media: [
+         'https://via.placeholder.com/400x320?text=Growth+Phase+1',
+         'https://via.placeholder.com/400x320?text=Growth+Phase+2',
+      ],
+      createdAt: '2025-04-12T07:20:00',
+   },
+   {
+      _id: 'u5',
+      project: { id: 2, title: 'Tomato Greenhouse Project' },
+      text_content: 'Constructed the second greenhouse tunnel.',
+      milestone_type: 'construction',
+      media: [
+         'https://via.placeholder.com/400x320?text=Construction+Phase+1',
+         'https://via.placeholder.com/400x320?text=Construction+Phase+2',
+      ],
+      createdAt: '2025-04-09T11:10:00',
+   },
+   {
+      _id: 'u6',
+      project: { id: 6, title: 'Bee Farming for Honey Production' },
+      text_content: 'Harvested 15 kg of honey from the first hive.',
+      milestone_type: 'harvest',
+      media: [
+         'https://via.placeholder.com/400x320?text=Harvest+Phase+1',
+         'https://via.placeholder.com/400x320?text=Harvest+Phase+2',
+      ],
+      createdAt: '2025-04-11T16:40:00',
+   },
+   {
+      _id: 'u7',
+      project: { id: 5, title: 'Fish Farm Project' },
+      text_content: 'Stocked 2000 fingerlings in the new pond.',
+      milestone_type: 'stocking',
+      media: [
+         'https://via.placeholder.com/400x320?text=Stocking+Phase+1',
+         'https://via.placeholder.com/400x320?text=Stocking+Phase+2',
+      ],
+      createdAt: '2025-04-07T13:15:00',
+   },
+   {
+      _id: 'u8',
+      project: { id: 4, title: 'Poultry Expansion Initiative' },
+      text_content: 'Vaccinated all chicks against Newcastle disease.',
+      milestone_type: 'health_check',
+      media: [
+         'https://via.placeholder.com/400x320?text=Health+Check+Phase+1',
+         'https://via.placeholder.com/400x320?text=Health+Check+Phase+2',
+      ],
+      createdAt: '2025-04-06T08:00:00',
    },
 ];
