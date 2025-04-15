@@ -13,96 +13,6 @@ const fishImage2 = require('../assets/images/project_images/fish2.jpg');
 const beefarmImage1 = require('../assets/images/project_images/beefarm1.webp');
 const beefarmImage2 = require('../assets/images/project_images/beefarm2.jpg');
 
-export const mockFarmProjects = [
-   {
-      id: 1,
-      title: 'Maize Cultivation Project',
-      description: 'Large scale maize cultivation in Northern region',
-      type: 'Crop',
-      status: 'Active',
-      fundingGoal: 5000000,
-      currentFunding: 3250000,
-      progress: 65,
-      startDate: '2024-01-15',
-      duration: '6 months',
-   },
-   {
-      id: 2,
-      title: 'Poultry Farm Expansion',
-      description: 'Modern poultry farm with 5000 birds capacity',
-      type: 'Livestock',
-      status: 'Under Review',
-      fundingGoal: 7500000,
-      currentFunding: 2250000,
-      progress: 30,
-      startDate: '2024-02-01',
-      duration: '12 months',
-   },
-   {
-      id: 3,
-      title: 'Cassava Processing Plant',
-      description:
-         'Facility for turning cassava into flour and starch products',
-      type: 'Agri-processing',
-      status: 'Completed',
-      fundingGoal: 8500000,
-      currentFunding: 8500000,
-      progress: 100,
-      startDate: '2023-06-01',
-      duration: '10 months',
-   },
-   {
-      id: 4,
-      title: 'Rice Irrigation Project',
-      description:
-         'Installation of efficient irrigation systems in paddy fields',
-      type: 'Crop',
-      status: 'Active',
-      fundingGoal: 6200000,
-      currentFunding: 4100000,
-      progress: 66,
-      startDate: '2024-03-10',
-      duration: '7 months',
-   },
-   {
-      id: 5,
-      title: 'Goat Rearing Program',
-      description: 'Sustainable goat farming for meat and dairy products',
-      type: 'Livestock',
-      status: 'Pending Approval',
-      fundingGoal: 3000000,
-      currentFunding: 0,
-      progress: 0,
-      startDate: '2024-05-01',
-      duration: '8 months',
-   },
-   {
-      id: 6,
-      title: 'Greenhouse Vegetable Project',
-      description:
-         'Controlled environment agriculture for year-round vegetables',
-      type: 'Crop',
-      status: 'Active',
-      fundingGoal: 4000000,
-      currentFunding: 2800000,
-      progress: 70,
-      startDate: '2024-02-20',
-      duration: '9 months',
-   },
-   {
-      id: 7,
-      title: 'Agro-Waste Recycling Unit',
-      description: 'Converting farm waste into organic fertilizers',
-      type: 'Agri-processing',
-      status: 'Under Review',
-      fundingGoal: 5500000,
-      currentFunding: 1250000,
-      progress: 23,
-      startDate: '2024-04-05',
-      duration: '6 months',
-   },
-];
-
 export const mockTransactions = [
    {
       id: 'TR001',
@@ -319,9 +229,9 @@ export const mockFarmerGeoData = [
 
 export const projects = [
    {
-      id: 1, // Added id
+      id: 1,
       title: 'Maize Farm Project',
-      status: 'Active',
+      status: 'Active', // Valid status
       progress: 65,
       category: 'Crop',
       location: 'Northern Region',
@@ -335,9 +245,9 @@ export const projects = [
          'The project aims to cultivate 50 hectares of high-yield hybrid maize using mechanized farming techniques. This will increase food production and contribute to regional food security while creating seasonal jobs for local workers. The harvested maize will be distributed to processing partners for flour and animal feed.',
    },
    {
-      id: 2, // Added id
+      id: 2,
       title: 'Tomato Greenhouse Project',
-      status: 'Under Review',
+      status: 'Submitted', // Changed from 'Under Review' to 'Submitted'
       progress: 40,
       category: 'Crop',
       location: 'Western Highlands',
@@ -351,9 +261,9 @@ export const projects = [
          'This project focuses on controlled greenhouse cultivation of tomatoes to ensure year-round supply and reduce seasonal shortages. The facility will use drip irrigation, automated ventilation, and pest-resistant varieties. Expected yield is 5 tons per month, with partnerships already secured with local grocery chains.',
    },
    {
-      id: 3, // Added id
+      id: 3,
       title: 'Cassava Processing Plant',
-      status: 'Completed',
+      status: 'Completed', // Valid status
       progress: 100,
       category: 'Agri-processing',
       location: 'Central Region',
@@ -367,9 +277,9 @@ export const projects = [
          'The facility transforms raw cassava roots into high-quality flour, chips, and starch. Built to reduce post-harvest losses and improve farmer income, the plant processes 20 tons daily and serves over 800 outgrowers. All environmental standards were met, and community employment rose by 30%.',
    },
    {
-      id: 4, // Added id
+      id: 4,
       title: 'Poultry Expansion Initiative',
-      status: 'Active',
+      status: 'Active', // Valid status
       progress: 75,
       category: 'Livestock',
       location: 'Eastern Region',
@@ -383,9 +293,9 @@ export const projects = [
          'This expansion will increase the poultry farm’s capacity from 2,000 to 6,000 birds, with improved ventilation, automatic feeders, and biosecurity systems. Eggs and broilers are sold to institutional buyers. Local feed suppliers and veterinary partners support the project ecosystem.',
    },
    {
-      id: 5, // Added id
+      id: 5,
       title: 'Fish Farm Project',
-      status: 'Pending',
+      status: 'Submitted', // Changed from 'Pending' to 'Submitted'
       progress: 20,
       category: 'Aquaculture',
       location: 'Southern Region',
@@ -399,9 +309,9 @@ export const projects = [
          'This aquaculture initiative includes construction of six earthen ponds and installation of aeration systems for catfish and tilapia farming. The project introduces sustainable aquaculture practices to meet rising protein demand in urban markets. It includes training for 20 youth apprentices.',
    },
    {
-      id: 6, // Added id
+      id: 6,
       title: 'Bee Farming for Honey Production',
-      status: 'Active',
+      status: 'Active', // Valid status
       progress: 55,
       category: 'Livestock',
       location: 'Northwest Region',

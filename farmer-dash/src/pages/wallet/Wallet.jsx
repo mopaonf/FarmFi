@@ -93,7 +93,7 @@ const Wallet = () => {
             >
                <Box
                   display="flex"
-                  justifyContent="space-between"
+                  justifyContent="space-around"
                   alignItems="center"
                   mb={2}
                >
