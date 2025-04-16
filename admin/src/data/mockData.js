@@ -1293,6 +1293,7 @@ export const projects = [
       timestamp: '2023-10-01',
       documentation:
          'The project aims to cultivate 50 hectares of high-yield hybrid maize using mechanized farming techniques. This will increase food production and contribute to regional food security while creating seasonal jobs for local workers. The harvested maize will be distributed to processing partners for flour and animal feed.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
    {
       id: 2,
@@ -1309,6 +1310,7 @@ export const projects = [
       timestamp: '2023-11-12',
       documentation:
          'This project focuses on controlled greenhouse cultivation of tomatoes to ensure year-round supply and reduce seasonal shortages. The facility will use drip irrigation, automated ventilation, and pest-resistant varieties. Expected yield is 5 tons per month, with partnerships already secured with local grocery chains.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
    {
       id: 3,
@@ -1325,6 +1327,7 @@ export const projects = [
       timestamp: '2023-05-10',
       documentation:
          'The facility transforms raw cassava roots into high-quality flour, chips, and starch. Built to reduce post-harvest losses and improve farmer income, the plant processes 20 tons daily and serves over 800 outgrowers. All environmental standards were met, and community employment rose by 30%.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
    {
       id: 4,
@@ -1341,6 +1344,7 @@ export const projects = [
       timestamp: '2024-01-05',
       documentation:
          'This expansion will increase the poultry farm’s capacity from 2,000 to 6,000 birds, with improved ventilation, automatic feeders, and biosecurity systems. Eggs and broilers are sold to institutional buyers. Local feed suppliers and veterinary partners support the project ecosystem.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
    {
       id: 5,
@@ -1357,6 +1361,7 @@ export const projects = [
       timestamp: '2024-03-01',
       documentation:
          'This aquaculture initiative includes construction of six earthen ponds and installation of aeration systems for catfish and tilapia farming. The project introduces sustainable aquaculture practices to meet rising protein demand in urban markets. It includes training for 20 youth apprentices.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
    {
       id: 6,
@@ -1373,5 +1378,57 @@ export const projects = [
       timestamp: '2024-02-15',
       documentation:
          'This project involves the setup of 80 modern hives and processing equipment to produce organic honey and beeswax. Benefiting both agriculture (via pollination) and health sectors, it also trains local women on packaging and cooperative management for export readiness.',
+      farmerId: 1, // Assigned to Alice Johnson
    },
+];
+
+export const mockDataInvestors = [
+   {
+      id: 1,
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      phone: '+237 654 321 987',
+      type: 'Individual',
+      totalInvestment: 500000,
+   },
+   {
+      id: 2,
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      phone: '+237 678 123 456',
+      type: 'Corporate',
+      totalInvestment: 1200000,
+   },
+   {
+      id: 3,
+      name: 'Michael Johnson',
+      email: 'michael.johnson@example.com',
+      phone: '+237 690 987 654',
+      type: 'Individual',
+      totalInvestment: 750000,
+   },
+   {
+      id: 4,
+      name: 'Emily Davis',
+      email: 'emily.davis@example.com',
+      phone: '+237 699 456 123',
+      type: 'Corporate',
+      totalInvestment: 2000000,
+   },
+   {
+      id: 5,
+      name: 'David Wilson',
+      email: 'david.wilson@example.com',
+      phone: '+237 655 789 321',
+      type: 'Individual',
+      totalInvestment: 300000,
+   },
+];
+
+export const mockRegionalData = [
+   { region: 'North', projects: 12 },
+   { region: 'South', projects: 8 },
+   { region: 'East', projects: 15 },
+   { region: 'West', projects: 10 },
+   { region: 'Central', projects: 18 },
 ];

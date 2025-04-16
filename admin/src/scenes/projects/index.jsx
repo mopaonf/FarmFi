@@ -55,6 +55,16 @@ const ProjectsPage = () => {
       setIsModalOpen(false); // Close modal after action
    };
 
+   // Handle project stop (for Active projects)
+   const handleStop = (id) => {
+      setProjectList((prev) =>
+         prev.map((project) =>
+            project.id === id ? { ...project, status: 'Stopped' } : project
+         )
+      );
+      setIsModalOpen(false); // Close modal after action
+   };
+
    // Open modal with selected project details
    const handleCardClick = (project) => {
       setSelectedProject(project);
@@ -321,6 +331,13 @@ const ProjectsPage = () => {
                         color={colors.grey?.[300] || '#ccc'}
                         mb={2}
                      >
+                        <strong>Status:</strong> {selectedProject.status}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
                         <strong>Land Size:</strong> {selectedProject.landSize}{' '}
                         hectares
                      </Typography>
@@ -379,17 +396,37 @@ const ProjectsPage = () => {
                            selectedProject.photos.map((photo, index) => (
                               <Box
                                  key={index}
-                                 component="img"
-                                 src={photo}
-                                 alt={`Project Photo ${index + 1}`}
                                  sx={{
-                                    width: '150px',
-                                    height: '150px',
-                                    objectFit: 'cover',
-                                    borderRadius: '8px',
-                                    boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)',
+                                    position: 'relative',
+                                    cursor: 'pointer',
                                  }}
-                              />
+                                 onClick={() => handleImageClick(photo)} // Open image modal on click
+                              >
+                                 <Box
+                                    component="img"
+                                    src={photo}
+                                    alt={`Project Photo ${index + 1}`}
+                                    sx={{
+                                       width: '150px',
+                                       height: '150px',
+                                       objectFit: 'cover',
+                                       borderRadius: '8px',
+                                       boxShadow:
+                                          '0px 2px 5px rgba(0, 0, 0, 0.1)',
+                                    }}
+                                 />
+                                 <ZoomInIcon
+                                    sx={{
+                                       position: 'absolute',
+                                       top: '5px',
+                                       right: '5px',
+                                       color: 'white',
+                                       backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                       borderRadius: '50%',
+                                       padding: '2px',
+                                    }}
+                                 />
+                              </Box>
                            ))
                         ) : (
                            <Typography
@@ -439,22 +476,40 @@ const ProjectsPage = () => {
                      </Box>
 
                      <Box display="flex" justifyContent="space-between" mt={4}>
-                        <Button
-                           variant="contained"
-                           color="success"
-                           onClick={() => handleApprove(selectedProject.id)}
-                           startIcon={<CheckCircleOutlineIcon />}
-                        >
-                           Approve
-                        </Button>
-                        <Button
-                           variant="contained"
-                           color="error"
-                           onClick={() => handleReject(selectedProject.id)}
-                           startIcon={<CancelOutlinedIcon />}
-                        >
-                           Reject
-                        </Button>
+                        {selectedProject.status === 'Submitted' && (
+                           <>
+                              <Button
+                                 variant="contained"
+                                 color="success"
+                                 onClick={() =>
+                                    handleApprove(selectedProject.id)
+                                 }
+                                 startIcon={<CheckCircleOutlineIcon />}
+                              >
+                                 Approve
+                              </Button>
+                              <Button
+                                 variant="contained"
+                                 color="error"
+                                 onClick={() =>
+                                    handleReject(selectedProject.id)
+                                 }
+                                 startIcon={<CancelOutlinedIcon />}
+                              >
+                                 Reject
+                              </Button>
+                           </>
+                        )}
+                        {selectedProject.status === 'Active' && (
+                           <Button
+                              variant="contained"
+                              color="error"
+                              onClick={() => handleStop(selectedProject.id)}
+                              startIcon={<CancelOutlinedIcon />}
+                           >
+                              Stop Project
+                           </Button>
+                        )}
                      </Box>
                   </>
                )}

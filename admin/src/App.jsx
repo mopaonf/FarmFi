@@ -6,6 +6,10 @@ import Topbar from './scenes/global/Topbar';
 import Sidebar from './scenes/global/Sidebar';
 import Dashboard from './scenes/dashboard';
 import ProjectsPage from './scenes/projects';
+import FarmersPage from './scenes/farmers';
+import TransactionPage from './scenes/transactions';
+import InvestorsPage from './scenes/investors';
+import FundingProgressPage from './scenes/fundingprogress';
 
 const App = () => {
    const [theme, colorMode] = useMode();
@@ -22,6 +26,16 @@ const App = () => {
                      <Routes>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/projects" element={<ProjectsPage />} />
+                        <Route path="/farmers" element={<FarmersPage />} />
+                        <Route path="/investors" element={<InvestorsPage />} />
+                        <Route
+                           path="/transactions"
+                           element={<TransactionPage />}
+                        />
+                        <Route
+                           path="/funding"
+                           element={<FundingProgressPage />}
+                        />
                         {/* Add other routes as needed */}
                      </Routes>
                   </main>
