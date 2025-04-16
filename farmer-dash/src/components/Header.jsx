@@ -1,8 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppBar, Toolbar, Typography, Box } from '@mui/material';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
+import axios from 'axios';
 
 const Header = () => {
+   const [userName, setUserName] = useState('');
+
+   useEffect(() => {
+      const fetchProfile = async () => {
+         try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(
+               'http://localhost:5000/api/farmers/profile',
+               {
+                  headers: { Authorization: `Bearer ${token}` },
+               }
+            );
+            setUserName(response.data.name); // Dynamically set the user's name
+         } catch (error) {
+            console.error('Error fetching profile:', error);
+         }
+      };
+      fetchProfile();
+   }, []);
+
    return (
       <AppBar
          position="fixed"
@@ -26,6 +47,9 @@ const Header = () => {
                </Typography>
             </Box>
             <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+               {userName}
+            </Typography>
          </Toolbar>
       </AppBar>
    );

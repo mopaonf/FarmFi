@@ -72,6 +72,16 @@ const SubmitProject = () => {
       start_date: null,
       end_date: null,
       is_draft: true,
+      investment_per_unit: '',
+      total_units: '',
+      expected_roi_range: '',
+      return_frequency: '',
+      return_start_year: '',
+      contract_duration: '',
+      annual_net_profit_estimate: '',
+      risks_and_mitigation: '',
+      pitch_video: null,
+      farmer_bio: '',
    });
 
    // Preview for uploaded photos
@@ -296,6 +306,17 @@ const SubmitProject = () => {
       }
    };
 
+   // Handle file uploads for pitch video
+   const handleVideoUpload = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+         setFormData({
+            ...formData,
+            pitch_video: file,
+         });
+      }
+   };
+
    // Render current step content
    const getStepContent = (step) => {
       switch (step) {
@@ -424,6 +445,49 @@ const SubmitProject = () => {
                         <MenuItem value="high">High Risk</MenuItem>
                      </TextField>
                   </Grid>
+
+                  <Grid item xs={12} md={6}>
+                     <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                           label="Start Date *"
+                           value={formData.start_date}
+                           onChange={(date) =>
+                              handleDateChange('start_date', date)
+                           }
+                           renderInput={(params) => (
+                              <TextField
+                                 {...params}
+                                 fullWidth
+                                 error={!!errors.start_date}
+                                 helperText={errors.start_date}
+                              />
+                           )}
+                           disablePast
+                        />
+                     </LocalizationProvider>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                     <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                           label="End Date *"
+                           value={formData.end_date}
+                           onChange={(date) =>
+                              handleDateChange('end_date', date)
+                           }
+                           renderInput={(params) => (
+                              <TextField
+                                 {...params}
+                                 fullWidth
+                                 error={!!errors.end_date}
+                                 helperText={errors.end_date}
+                              />
+                           )}
+                           disablePast
+                           minDate={formData.start_date || new Date()}
+                        />
+                     </LocalizationProvider>
+                  </Grid>
                </Grid>
             );
 
@@ -537,6 +601,107 @@ const SubmitProject = () => {
                            Profit Sharing
                         </MenuItem>
                      </TextField>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        type="number"
+                        label="Investment per Unit"
+                        name="investment_per_unit"
+                        value={formData.investment_per_unit}
+                        onChange={handleChange}
+                        error={!!errors.investment_per_unit}
+                        helperText={errors.investment_per_unit}
+                        InputProps={{
+                           startAdornment: (
+                              <InputAdornment position="start">
+                                 FCFA
+                              </InputAdornment>
+                           ),
+                        }}
+                        inputProps={{ min: 0 }}
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        type="number"
+                        label="Total Units (Stock)"
+                        name="total_units"
+                        value={formData.total_units}
+                        onChange={handleChange}
+                        error={!!errors.total_units}
+                        helperText={errors.total_units}
+                        inputProps={{ min: 0 }}
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Expected ROI Range"
+                        name="expected_roi_range"
+                        value={formData.expected_roi_range}
+                        onChange={handleChange}
+                        error={!!errors.expected_roi_range}
+                        helperText={errors.expected_roi_range}
+                        placeholder="E.g., 15% – 45% per year"
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Return Frequency"
+                        name="return_frequency"
+                        value={formData.return_frequency}
+                        onChange={handleChange}
+                        error={!!errors.return_frequency}
+                        helperText={errors.return_frequency}
+                        placeholder="E.g., Yearly"
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Return Start Year"
+                        name="return_start_year"
+                        value={formData.return_start_year}
+                        onChange={handleChange}
+                        error={!!errors.return_start_year}
+                        helperText={errors.return_start_year}
+                        placeholder="E.g., Year 5"
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Contract Duration"
+                        name="contract_duration"
+                        value={formData.contract_duration}
+                        onChange={handleChange}
+                        error={!!errors.contract_duration}
+                        helperText={errors.contract_duration}
+                        placeholder="E.g., 18 years"
+                     />
+                  </Grid>
+                  <Grid item xs={12}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Annual Net Profit Estimate"
+                        name="annual_net_profit_estimate"
+                        value={formData.annual_net_profit_estimate}
+                        onChange={handleChange}
+                        error={!!errors.annual_net_profit_estimate}
+                        helperText={errors.annual_net_profit_estimate}
+                        placeholder="E.g., Between 75M – 120M FCFA from Year 6 onwards"
+                     />
                   </Grid>
 
                   <Grid item xs={12} md={6}>
@@ -814,6 +979,22 @@ const SubmitProject = () => {
                         </Stack>
                      </Grid>
                   )}
+
+                  <Grid item xs={12}>
+                     <TextField
+                        fullWidth
+                        required
+                        label="Risks & Mitigation"
+                        name="risks_and_mitigation"
+                        value={formData.risks_and_mitigation}
+                        onChange={handleChange}
+                        error={!!errors.risks_and_mitigation}
+                        helperText={errors.risks_and_mitigation}
+                        multiline
+                        rows={4}
+                        placeholder="Describe risks and mitigation strategies"
+                     />
+                  </Grid>
                </Grid>
             );
 
@@ -1080,6 +1261,53 @@ const SubmitProject = () => {
                            </Box>
                         )}
                      </Paper>
+
+                     <Grid item xs={12}>
+                        <Paper
+                           variant="outlined"
+                           sx={{
+                              p: 3,
+                              borderColor: colors.primary[300],
+                              borderStyle: 'dashed',
+                              borderWidth: '2px',
+                              bgcolor: colors.primary[700],
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              '&:hover': {
+                                 bgcolor: colors.primary[600],
+                              },
+                           }}
+                           onClick={() => documentInputRef.current.click()}
+                        >
+                           <input
+                              type="file"
+                              accept="video/mp4"
+                              onChange={handleVideoUpload}
+                              style={{ display: 'none' }}
+                           />
+                           <Typography variant="h6" gutterBottom>
+                              Upload Pitch Video
+                           </Typography>
+                           <Typography variant="body2" color={colors.grey[300]}>
+                              Click or drag a video file here (MP4)
+                           </Typography>
+                        </Paper>
+                     </Grid>
+                     <Grid item xs={12}>
+                        <TextField
+                           fullWidth
+                           required
+                           label="Farmer Bio"
+                           name="farmer_bio"
+                           value={formData.farmer_bio}
+                           onChange={handleChange}
+                           error={!!errors.farmer_bio}
+                           helperText={errors.farmer_bio}
+                           multiline
+                           rows={4}
+                           placeholder="Provide a brief bio of the farmer"
+                        />
+                     </Grid>
 
                      <Box mt={3}>
                         <FormControlLabel

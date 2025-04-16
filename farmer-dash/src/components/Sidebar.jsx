@@ -9,7 +9,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PersonIcon from '@mui/icons-material/Person';
 
 const menuItems = [
-   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
    { text: 'My Projects', icon: <FolderIcon />, path: '/projects' },
    { text: 'Submit Project', icon: <AddBoxIcon />, path: '/submit-project' },
    { text: 'Post Update', icon: <UpdateIcon />, path: '/updates' },

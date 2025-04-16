@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 import {
    Box,
    Typography,
@@ -15,15 +17,28 @@ import { tokens } from '../../theme';
 const Profile = () => {
    const theme = useTheme();
    const colors = tokens(theme.palette.mode);
+   const navigate = useNavigate(); // Initialize useNavigate
 
    const [isModalOpen, setIsModalOpen] = useState(false);
-   const [profileData, setProfileData] = useState({
-      fullName: 'Jane Farmer',
-      email: 'janefarmer@example.com',
-      phone: '+237 654 321 987',
-      address: '456 Green Valley, Western Region',
-      country: 'Cameroon',
-   });
+   const [profileData, setProfileData] = useState(null); // Initialize as null
+
+   useEffect(() => {
+      const fetchProfile = async () => {
+         try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(
+               'http://localhost:5000/api/farmers/profile',
+               {
+                  headers: { Authorization: `Bearer ${token}` },
+               }
+            );
+            setProfileData(response.data); // Dynamically set profile data
+         } catch (error) {
+            console.error('Error fetching profile:', error);
+         }
+      };
+      fetchProfile();
+   }, []);
 
    const handleOpenModal = () => setIsModalOpen(true);
    const handleCloseModal = () => setIsModalOpen(false);
@@ -33,10 +48,47 @@ const Profile = () => {
       setProfileData((prev) => ({ ...prev, [name]: value }));
    };
 
-   const handleSaveChanges = () => {
-      // Save changes logic here (e.g., API call)
-      handleCloseModal();
+   const handleSaveChanges = async () => {
+      try {
+         const token = localStorage.getItem('token');
+         const response = await axios.put(
+            'http://localhost:5000/api/farmers/profile', // Ensure this matches the backend route
+            profileData,
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setProfileData(response.data.updatedFarmer); // Update profile data
+         handleCloseModal();
+      } catch (error) {
+         console.error('Error saving profile changes:', error);
+      }
    };
+
+   const handleDeleteAccount = async () => {
+      try {
+         const token = localStorage.getItem('token');
+         await axios.delete('http://localhost:5000/api/farmers/profile', {
+            headers: { Authorization: `Bearer ${token}` },
+         });
+         localStorage.removeItem('token'); // Clear token
+         navigate('/auth'); // Redirect to auth page
+      } catch (error) {
+         console.error('Error deleting account:', error);
+      }
+   };
+
+   const handleLogout = () => {
+      localStorage.removeItem('token'); // Clear the token
+      navigate('/auth'); // Redirect to the auth page
+   };
+
+   const formatDate = (dateString) => {
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+   };
+
+   if (!profileData) {
+      return <Typography>Loading...</Typography>; // Show loading state
+   }
 
    return (
       <Box m="20px">
@@ -76,9 +128,12 @@ const Profile = () => {
                }}
             >
                {profileData.fullName
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')}
+                  ? profileData.fullName
+                       .split(' ')
+                       .map((n) => n[0])
+                       .join('')
+                  : 'N/A'}{' '}
+               {/* Safely access fullName */}
             </Avatar>
             <Box>
                <Typography
@@ -86,17 +141,20 @@ const Profile = () => {
                   fontWeight="bold"
                   color={colors.grey[100]}
                >
-                  {profileData.fullName}
+                  {profileData.name || 'N/A'} {/* Safely access name */}
                </Typography>
                <Typography variant="body1" color={colors.grey[300]} mt={1}>
-                  {profileData.email}
+                  {profileData.email || 'N/A'} {/* Safely access email */}
                </Typography>
                <Typography
                   variant="body2"
                   color={colors.greenAccent[400]}
                   mt={1}
                >
-                  Farmer since 2020
+                  Farmer since{' '}
+                  {profileData.createdAt
+                     ? formatDate(profileData.createdAt)
+                     : 'N/A'}{' '}
                </Typography>
             </Box>
          </Card>
@@ -123,24 +181,33 @@ const Profile = () => {
             <Box display="grid" gridTemplateColumns="1fr 1fr" gap="20px">
                <Box>
                   <Typography variant="body2" color={colors.grey[300]}>
-                     <strong>Full Name:</strong> {profileData.fullName}
+                     <strong>Full Name:</strong> {profileData.name || 'N/A'}{' '}
+                     {/* Safely access name */}
                   </Typography>
                   <Typography variant="body2" color={colors.grey[300]} mt={1}>
-                     <strong>Email:</strong> {profileData.email}
+                     <strong>Email:</strong> {profileData.email || 'N/A'}{' '}
+                     {/* Safely access email */}
                   </Typography>
                   <Typography variant="body2" color={colors.grey[300]} mt={1}>
-                     <strong>Phone:</strong> {profileData.phone}
+                     <strong>Phone:</strong> {profileData.phone || 'N/A'}{' '}
+                     {/* Safely access phone */}
                   </Typography>
                </Box>
                <Box>
                   <Typography variant="body2" color={colors.grey[300]}>
-                     <strong>Address:</strong> {profileData.address}
+                     <strong>Address:</strong> {profileData.address || 'N/A'}{' '}
+                     {/* Safely access address */}
                   </Typography>
                   <Typography variant="body2" color={colors.grey[300]} mt={1}>
-                     <strong>Country:</strong> {profileData.country}
+                     <strong>Country:</strong> {profileData.country || 'N/A'}{' '}
+                     {/* Safely access country */}
                   </Typography>
                   <Typography variant="body2" color={colors.grey[300]} mt={1}>
-                     <strong>Member Since:</strong> January 2020
+                     <strong>Member Since:</strong>{' '}
+                     {profileData.createdAt
+                        ? formatDate(profileData.createdAt)
+                        : 'N/A'}{' '}
+                     {/* Display account creation date */}
                   </Typography>
                </Box>
             </Box>
@@ -163,6 +230,7 @@ const Profile = () => {
             </Button>
             <Button
                variant="outlined"
+               onClick={handleDeleteAccount} // Attach delete handler
                sx={{
                   borderColor: colors.redAccent[500],
                   color: colors.redAccent[500],
@@ -173,6 +241,20 @@ const Profile = () => {
                }}
             >
                Delete Account
+            </Button>
+            <Button
+               variant="outlined"
+               onClick={handleLogout}
+               sx={{
+                  borderColor: colors.grey[500],
+                  color: colors.grey[500],
+                  '&:hover': {
+                     backgroundColor: colors.grey[700],
+                     color: colors.grey[100],
+                  },
+               }}
+            >
+               Logout
             </Button>
          </Box>
 
