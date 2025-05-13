@@ -39,6 +39,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { tokens } from '../../theme';
+import axios from 'axios';
 
 const SubmitProject = () => {
    const theme = useTheme();
@@ -88,6 +89,8 @@ const SubmitProject = () => {
    const [photoPreview, setPhotoPreview] = useState([]);
    // Documents list
    const [documentsList, setDocumentsList] = useState([]);
+   // Add a new state for image URL input
+   const [imageUrlInput, setImageUrlInput] = useState('');
 
    // Form steps configuration
    const steps = [
@@ -138,7 +141,12 @@ const SubmitProject = () => {
       files.forEach((file) => {
          // In real app, would upload to server
          const fileId = `photo_${Date.now()}_${newPhotos.length}`;
-         newPhotos.push(fileId);
+         // Instead of pushing just the id, push an object with url, name, type
+         newPhotos.push({
+            url: URL.createObjectURL(file),
+            name: file.name,
+            type: file.type,
+         });
 
          // Create preview URL
          const previewUrl = URL.createObjectURL(file);
@@ -173,7 +181,13 @@ const SubmitProject = () => {
       files.forEach((file) => {
          // In real app, would upload to server
          const fileId = `doc_${Date.now()}_${newDocuments.length}`;
-         newDocuments.push(fileId);
+         // Instead of pushing just the id, push an object with url, name, type, size
+         newDocuments.push({
+            url: '', // No URL since not uploaded, or use URL.createObjectURL(file) if you want
+            name: file.name,
+            type: file.type,
+            size: file.size,
+         });
 
          newDocumentsList.push({
             id: fileId,
@@ -289,17 +303,32 @@ const SubmitProject = () => {
          setIsSubmitting(true);
 
          try {
-            // In a real app, this would be an API call
-            console.log('Submitting form:', formData);
+            // Prepare data for backend (convert dates and numbers)
+            const payload = {
+               ...formData,
+               land_size: Number(formData.land_size),
+               budget_total: Number(formData.budget_total),
+               funding_goal: Number(formData.funding_goal),
+               duration_in_months: Number(formData.duration_in_months),
+               investment_per_unit: Number(formData.investment_per_unit),
+               total_units: Number(formData.total_units),
+               start_date: formData.start_date
+                  ? new Date(formData.start_date).toISOString()
+                  : null,
+               end_date: formData.end_date
+                  ? new Date(formData.end_date).toISOString()
+                  : null,
+            };
 
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const token = localStorage.getItem('token');
+            await axios.post('http://localhost:5000/api/projects', payload, {
+               headers: { Authorization: `Bearer ${token}` },
+            });
 
             setSubmitSuccess(true);
-            // In real app, redirect or show success message
          } catch (error) {
             console.error('Error submitting form:', error);
-            // Handle error
+            // Optionally show error to user
          } finally {
             setIsSubmitting(false);
          }
@@ -314,6 +343,24 @@ const SubmitProject = () => {
             ...formData,
             pitch_video: file,
          });
+      }
+   };
+
+   // Add this function to handle adding image URLs
+   const handleAddImageUrl = () => {
+      if (imageUrlInput.trim()) {
+         setFormData({
+            ...formData,
+            photos: [
+               ...formData.photos,
+               {
+                  url: imageUrlInput.trim(),
+                  name: imageUrlInput.trim().split('/').pop(),
+                  type: 'image/url',
+               },
+            ],
+         });
+         setImageUrlInput('');
       }
    };
 
@@ -823,6 +870,28 @@ const SubmitProject = () => {
                            </Typography>
                         )}
                      </Paper>
+                  </Grid>
+                  {/* Add input for image URL */}
+                  <Grid item xs={12} md={8}>
+                     <TextField
+                        fullWidth
+                        label="Add Image by URL"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        placeholder="Paste a direct image URL (https://...)"
+                     />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                     <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        sx={{ height: '100%' }}
+                        onClick={handleAddImageUrl}
+                        disabled={!imageUrlInput.trim()}
+                     >
+                        Add Image URL
+                     </Button>
                   </Grid>
 
                   {photoPreview.length > 0 && (

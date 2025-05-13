@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
    Box,
    Typography,
@@ -13,7 +13,7 @@ import {
    Divider,
 } from '@mui/material';
 import { tokens } from '../../theme';
-import { projects } from '../../data/mockData';
+import axios from 'axios';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
@@ -22,11 +22,31 @@ const ProjectsPage = () => {
    const theme = useTheme();
    const colors = tokens(theme.palette.mode) || {};
    const [selectedFilter, setSelectedFilter] = useState('All');
-   const [projectList, setProjectList] = useState(projects);
+   const [projectList, setProjectList] = useState([]);
    const [selectedProject, setSelectedProject] = useState(null); // Track selected project for modal
    const [isModalOpen, setIsModalOpen] = useState(false); // Track modal state
    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
    const [selectedImage, setSelectedImage] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [expandedCards, setExpandedCards] = useState({});
+
+   // Fetch projects from backend
+   useEffect(() => {
+      const fetchProjects = async () => {
+         setLoading(true);
+         try {
+            const token = localStorage.getItem('adminToken');
+            const res = await axios.get('http://localhost:5000/api/projects', {
+               headers: { Authorization: `Bearer ${token}` },
+            });
+            setProjectList(res.data);
+         } catch (err) {
+            // handle error
+         }
+         setLoading(false);
+      };
+      fetchProjects();
+   }, []);
 
    // Filter projects by status
    const filteredProjects =
@@ -35,24 +55,39 @@ const ProjectsPage = () => {
          : projectList.filter((project) => project.status === selectedFilter);
 
    // Handle project approval
-   const handleApprove = (id) => {
-      setProjectList((prev) =>
-         prev.map((project) =>
-            project.id === id ? { ...project, status: 'Active' } : project
-         )
-      );
-      setIsModalOpen(false); // Close modal after action
+   const handleApprove = async (id) => {
+      try {
+         const token = localStorage.getItem('adminToken');
+         const res = await axios.patch(
+            `http://localhost:5000/api/projects/${id}/status`,
+            { status: 'Active' },
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setProjectList((prev) =>
+            prev.map((project) => (project._id === id ? res.data : project))
+         );
+         setIsModalOpen(false);
+      } catch (err) {
+         // handle error
+      }
    };
 
    // Handle project rejection
-   const handleReject = (id) => {
-      setProjectList((prev) =>
-         prev.map(
-            (project) =>
-               project.id === id ? { ...project, status: 'Denied' } : project // Removed invalid </Box>
-         )
-      );
-      setIsModalOpen(false); // Close modal after action
+   const handleReject = async (id) => {
+      try {
+         const token = localStorage.getItem('adminToken');
+         const res = await axios.patch(
+            `http://localhost:5000/api/projects/${id}/status`,
+            { status: 'Denied' },
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setProjectList((prev) =>
+            prev.map((project) => (project._id === id ? res.data : project))
+         );
+         setIsModalOpen(false);
+      } catch (err) {
+         // handle error
+      }
    };
 
    // Handle project stop (for Active projects)
@@ -75,6 +110,17 @@ const ProjectsPage = () => {
       setSelectedImage(image);
       setIsImageModalOpen(true);
    };
+
+   const handleShowMoreToggle = (id) => {
+      setExpandedCards((prev) => ({
+         ...prev,
+         [id]: !prev[id],
+      }));
+   };
+
+   if (loading) {
+      return <div>Loading...</div>;
+   }
 
    return (
       <Box m="20px">
@@ -130,138 +176,350 @@ const ProjectsPage = () => {
             gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))"
             gap={4}
          >
-            {filteredProjects.map((project) => (
-               <Card
-                  key={project.id}
-                  onClick={() => handleCardClick(project)} // Open modal on card click
-                  sx={{
-                     backgroundColor: colors.primary?.[400] || '#333', // Fallback color
-                     padding: '20px',
-                     borderRadius: '12px',
-                     boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)',
-                     cursor: 'pointer',
-                     '&:hover': {
-                        boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.3)',
-                     },
-                  }}
-               >
-                  <Typography
-                     variant="h6"
-                     fontWeight="bold"
-                     color={colors.greenAccent?.[400] || '#00ff00'} // Fallback color
-                     mb={1}
+            {filteredProjects.map((project) => {
+               const isExpanded = expandedCards[project._id];
+               return (
+                  <Card
+                     key={project._id}
+                     onClick={() => handleCardClick(project)}
+                     sx={{
+                        backgroundColor: colors.primary?.[400] || '#333', // Fallback color
+                        padding: '20px',
+                        borderRadius: '12px',
+                        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)',
+                        cursor: 'pointer',
+                        '&:hover': {
+                           boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.3)',
+                        },
+                     }}
                   >
-                     {project.title}
-                  </Typography>
-                  <Typography
-                     variant="body2"
-                     color={colors.grey?.[300] || '#ccc'}
-                     mb={1}
-                  >
-                     <strong>Category:</strong> {project.category}
-                  </Typography>
-                  <Typography
-                     variant="body2"
-                     color={colors.grey?.[300] || '#ccc'}
-                     mb={1}
-                  >
-                     <strong>Status:</strong>{' '}
-                     <span
-                        style={{
-                           color:
-                              project.status === 'Submitted'
-                                 ? colors.yellowAccent?.[400] || '#ff0'
-                                 : project.status === 'Active'
-                                 ? colors.greenAccent?.[400] || '#0f0'
-                                 : project.status === 'Denied'
-                                 ? colors.redAccent?.[400] || '#f00'
-                                 : colors.grey?.[300] || '#ccc',
-                        }}
-                     >
-                        {project.status}
-                     </span>
-                  </Typography>
-                  <Typography
-                     variant="body2"
-                     color={colors.grey?.[300] || '#ccc'}
-                     mb={1}
-                  >
-                     <strong>Funding Goal:</strong> FCFA{' '}
-                     {project.fundingGoal.toLocaleString()}
-                  </Typography>
-                  <Typography
-                     variant="body2"
-                     color={colors.grey?.[300] || '#ccc'}
-                     mb={1}
-                  >
-                     <strong>Progress:</strong> {project.progress}%
-                  </Typography>
-                  <Typography
-                     variant="body2"
-                     color={colors.grey?.[300] || '#ccc'}
-                     mb={2}
-                  >
-                     <strong>Location:</strong> {project.location}
-                  </Typography>
-
-                  {/* Photos Section */}
-                  <Box mt={4} mb={2}>
+                     {/* Farmer Name */}
                      <Typography
                         variant="body2"
-                        color={colors.grey[700]}
+                        color={colors.greenAccent?.[400] || '#00ff00'}
                         mb={1}
                      >
-                        <strong>Photos:</strong>
+                        <strong>Farmer:</strong>{' '}
+                        {project.farmer?.name ? project.farmer.name : 'Unknown'}
                      </Typography>
-                     <Box display="flex" gap={1} flexWrap="wrap">
-                        {project.photos?.length > 0 ? (
-                           project.photos.map((photo, i) => (
-                              <Box
-                                 key={i}
-                                 sx={{
-                                    position: 'relative',
-                                    cursor: 'pointer',
-                                 }}
-                                 onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleImageClick(photo);
-                                 }}
-                              >
-                                 <Box
-                                    component="img"
-                                    src={photo}
-                                    alt={`Project Photo ${i + 1}`}
-                                    sx={{
-                                       width: '80px',
-                                       height: '80px',
-                                       borderRadius: '8px',
-                                       objectFit: 'cover',
-                                       boxShadow:
-                                          '0px 2px 5px rgba(0, 0, 0, 0.1)',
-                                    }}
-                                 />
-                                 <ZoomInIcon
-                                    sx={{
-                                       position: 'absolute',
-                                       top: '5px',
-                                       right: '5px',
-                                       color: 'white',
-                                       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                       borderRadius: '50%',
-                                       padding: '2px',
-                                    }}
-                                 />
-                              </Box>
-                           ))
-                        ) : (
-                           <Typography variant="body2" color={colors.grey[500]}>
-                              No photos available
-                           </Typography>
-                        )}
+                     <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        color={colors.greenAccent?.[400] || '#00ff00'} // Fallback color
+                        mb={1}
+                     >
+                        {project.title}
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Category:</strong> {project.category}
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Status:</strong>{' '}
+                        <span
+                           style={{
+                              color:
+                                 project.status === 'Submitted'
+                                    ? colors.yellowAccent?.[400] || '#ff0'
+                                    : project.status === 'Active'
+                                    ? colors.greenAccent?.[400] || '#0f0'
+                                    : project.status === 'Denied'
+                                    ? colors.redAccent?.[400] || '#f00'
+                                    : colors.grey?.[300] || '#ccc',
+                           }}
+                        >
+                           {project.status}
+                        </span>
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Funding Goal:</strong> FCFA{' '}
+                        {project.funding_goal != null
+                           ? Number(project.funding_goal).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Budget Total:</strong> FCFA{' '}
+                        {project.budget_total != null
+                           ? Number(project.budget_total).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Description:</strong>{' '}
+                        {project.description || 'No description available.'}
+                     </Typography>
+                     <Typography
+                        variant="body2"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={1}
+                     >
+                        <strong>Timestamp:</strong>{' '}
+                        {project.createdAt
+                           ? new Date(project.createdAt).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
+                     {/* Show More/Less Button */}
+                     <Box mt={2}>
+                        <Button
+                           size="small"
+                           variant="outlined"
+                           onClick={(e) => {
+                              e.stopPropagation();
+                              handleShowMoreToggle(project._id);
+                           }}
+                        >
+                           {isExpanded ? 'Show Less' : 'Show More'}
+                        </Button>
                      </Box>
-                  </Box>
-               </Card>
-            ))}
+
+                     {/* Expanded Details */}
+                     {isExpanded && (
+                        <Box mt={2}>
+                           <Divider
+                              sx={{
+                                 mb: 2,
+                                 backgroundColor: colors.grey?.[300] || '#ccc',
+                              }}
+                           />
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Land Size:</strong> {project.land_size}{' '}
+                              hectares
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Investment per Unit:</strong> FCFA{' '}
+                              {project.investment_per_unit != null
+                                 ? Number(
+                                      project.investment_per_unit
+                                   ).toLocaleString()
+                                 : 'N/A'}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Total Units:</strong>{' '}
+                              {project.total_units}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Expected ROI Range:</strong>{' '}
+                              {project.expected_roi_range}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Return Frequency:</strong>{' '}
+                              {project.return_frequency}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Return Start Year:</strong>{' '}
+                              {project.return_start_year}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Contract Duration:</strong>{' '}
+                              {project.contract_duration}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Annual Net Profit Estimate:</strong>{' '}
+                              {project.annual_net_profit_estimate}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Risks & Mitigation:</strong>{' '}
+                              {project.risks_and_mitigation}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Pitch Video:</strong>{' '}
+                              {project.pitch_video?.url ? (
+                                 <a
+                                    href={project.pitch_video.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                 >
+                                    {project.pitch_video.name || 'View Video'}
+                                 </a>
+                              ) : (
+                                 'N/A'
+                              )}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Farmer Bio:</strong> {project.farmer_bio}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Start Date:</strong>{' '}
+                              {project.start_date
+                                 ? new Date(
+                                      project.start_date
+                                   ).toLocaleDateString()
+                                 : 'N/A'}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>End Date:</strong>{' '}
+                              {project.end_date
+                                 ? new Date(
+                                      project.end_date
+                                   ).toLocaleDateString()
+                                 : 'N/A'}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Created At:</strong>{' '}
+                              {project.createdAt
+                                 ? new Date(project.createdAt).toLocaleString()
+                                 : 'N/A'}
+                           </Typography>
+                           <Typography
+                              variant="body2"
+                              color={colors.grey?.[300] || '#ccc'}
+                              mb={1}
+                           >
+                              <strong>Updated At:</strong>{' '}
+                              {project.updatedAt
+                                 ? new Date(project.updatedAt).toLocaleString()
+                                 : 'N/A'}
+                           </Typography>
+                        </Box>
+                     )}
+                     {/* Photos Section */}
+                     <Box mt={4} mb={2}>
+                        <Typography
+                           variant="body2"
+                           color={colors.grey[700]}
+                           mb={1}
+                        >
+                           <strong>Photos:</strong>
+                        </Typography>
+                        <Box display="flex" gap={1} flexWrap="wrap">
+                           {project.photos?.length > 0 ? (
+                              project.photos.map((photo, i) => {
+                                 // Support both string and object with url
+                                 const url =
+                                    typeof photo === 'string'
+                                       ? photo
+                                       : photo.url;
+                                 // Only render if url is a valid HTTP(S) URL
+                                 if (url && /^https?:\/\//i.test(url)) {
+                                    return (
+                                       <Box
+                                          key={i}
+                                          sx={{
+                                             position: 'relative',
+                                             cursor: 'pointer',
+                                          }}
+                                          onClick={(e) => {
+                                             e.stopPropagation();
+                                             handleImageClick(url);
+                                          }}
+                                       >
+                                          <Box
+                                             component="img"
+                                             src={url}
+                                             alt={`Project Photo ${i + 1}`}
+                                             sx={{
+                                                width: '80px',
+                                                height: '80px',
+                                                borderRadius: '8px',
+                                                objectFit: 'cover',
+                                                boxShadow:
+                                                   '0px 2px 5px rgba(0, 0, 0, 0.1)',
+                                             }}
+                                          />
+                                          <ZoomInIcon
+                                             sx={{
+                                                position: 'absolute',
+                                                top: '5px',
+                                                right: '5px',
+                                                color: 'white',
+                                                backgroundColor:
+                                                   'rgba(0, 0, 0, 0.5)',
+                                                borderRadius: '50%',
+                                                padding: '2px',
+                                             }}
+                                          />
+                                       </Box>
+                                    );
+                                 }
+                                 return null;
+                              })
+                           ) : (
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[500]}
+                              >
+                                 No photos available
+                              </Typography>
+                           )}
+                        </Box>
+                     </Box>
+                  </Card>
+               );
+            })}
          </Box>
 
          {/* No Projects Message */}
@@ -338,7 +596,7 @@ const ProjectsPage = () => {
                         color={colors.grey?.[300] || '#ccc'}
                         mb={2}
                      >
-                        <strong>Land Size:</strong> {selectedProject.landSize}{' '}
+                        <strong>Land Size:</strong> {selectedProject.land_size}{' '}
                         hectares
                      </Typography>
                      <Typography
@@ -347,7 +605,11 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Budget Total:</strong> FCFA{' '}
-                        {selectedProject.budgetTotal.toLocaleString()}
+                        {selectedProject.budget_total != null
+                           ? Number(
+                                selectedProject.budget_total
+                             ).toLocaleString()
+                           : 'N/A'}
                      </Typography>
                      <Typography
                         variant="body1"
@@ -355,7 +617,11 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Funding Goal:</strong> FCFA{' '}
-                        {selectedProject.fundingGoal.toLocaleString()}
+                        {selectedProject.funding_goal != null
+                           ? Number(
+                                selectedProject.funding_goal
+                             ).toLocaleString()
+                           : 'N/A'}
                      </Typography>
                      <Typography
                         variant="body1"
@@ -371,7 +637,7 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Description:</strong>{' '}
-                        {selectedProject.documentation}
+                        {selectedProject.description}
                      </Typography>
                      <Typography
                         variant="body1"
@@ -380,8 +646,174 @@ const ProjectsPage = () => {
                      >
                         <strong>Timestamp:</strong> {selectedProject.timestamp}
                      </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Investment per Unit:</strong> FCFA{' '}
+                        {selectedProject.investment_per_unit != null
+                           ? Number(
+                                selectedProject.investment_per_unit
+                             ).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Total Units:</strong>{' '}
+                        {selectedProject.total_units}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Expected ROI Range:</strong>{' '}
+                        {selectedProject.expected_roi_range}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Return Frequency:</strong>{' '}
+                        {selectedProject.return_frequency}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Return Start Year:</strong>{' '}
+                        {selectedProject.return_start_year}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Contract Duration:</strong>{' '}
+                        {selectedProject.contract_duration}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Annual Net Profit Estimate:</strong>{' '}
+                        {selectedProject.annual_net_profit_estimate}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Risks & Mitigation:</strong>{' '}
+                        {selectedProject.risks_and_mitigation}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Pitch Video:</strong>{' '}
+                        {selectedProject.pitch_video?.url ? (
+                           <a
+                              href={selectedProject.pitch_video.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                           >
+                              {selectedProject.pitch_video.name || 'View Video'}
+                           </a>
+                        ) : (
+                           'N/A'
+                        )}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Farmer Bio:</strong>{' '}
+                        {selectedProject.farmer_bio}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Progress:</strong> {selectedProject.progress}%
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Status:</strong> {selectedProject.status}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Farmer:</strong>{' '}
+                        {selectedProject.farmer?.name
+                           ? selectedProject.farmer.name
+                           : 'Unknown'}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Start Date:</strong>{' '}
+                        {selectedProject.start_date
+                           ? new Date(
+                                selectedProject.start_date
+                             ).toLocaleDateString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>End Date:</strong>{' '}
+                        {selectedProject.end_date
+                           ? new Date(
+                                selectedProject.end_date
+                             ).toLocaleDateString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Created At:</strong>{' '}
+                        {selectedProject.createdAt
+                           ? new Date(
+                                selectedProject.createdAt
+                             ).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
+                     <Typography
+                        variant="body1"
+                        color={colors.grey?.[300] || '#ccc'}
+                        mb={2}
+                     >
+                        <strong>Updated At:</strong>{' '}
+                        {selectedProject.updatedAt
+                           ? new Date(
+                                selectedProject.updatedAt
+                             ).toLocaleString()
+                           : 'N/A'}
+                     </Typography>
 
-                     {/* Photos Section */}
+                     {/* Photos Section in Modal */}
                      <Typography
                         variant="h6"
                         fontWeight="bold"
@@ -393,84 +825,55 @@ const ProjectsPage = () => {
                      </Typography>
                      <Box display="flex" gap={2} flexWrap="wrap" mb={4}>
                         {selectedProject.photos?.length > 0 ? (
-                           selectedProject.photos.map((photo, index) => (
-                              <Box
-                                 key={index}
-                                 sx={{
-                                    position: 'relative',
-                                    cursor: 'pointer',
-                                 }}
-                                 onClick={() => handleImageClick(photo)} // Open image modal on click
-                              >
-                                 <Box
-                                    component="img"
-                                    src={photo}
-                                    alt={`Project Photo ${index + 1}`}
-                                    sx={{
-                                       width: '150px',
-                                       height: '150px',
-                                       objectFit: 'cover',
-                                       borderRadius: '8px',
-                                       boxShadow:
-                                          '0px 2px 5px rgba(0, 0, 0, 0.1)',
-                                    }}
-                                 />
-                                 <ZoomInIcon
-                                    sx={{
-                                       position: 'absolute',
-                                       top: '5px',
-                                       right: '5px',
-                                       color: 'white',
-                                       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                                       borderRadius: '50%',
-                                       padding: '2px',
-                                    }}
-                                 />
-                              </Box>
-                           ))
+                           selectedProject.photos.map((photo, index) => {
+                              const url =
+                                 typeof photo === 'string' ? photo : photo.url;
+                              if (url && /^https?:\/\//i.test(url)) {
+                                 return (
+                                    <Box
+                                       key={index}
+                                       sx={{
+                                          position: 'relative',
+                                          cursor: 'pointer',
+                                       }}
+                                       onClick={() => handleImageClick(url)}
+                                    >
+                                       <Box
+                                          component="img"
+                                          src={url}
+                                          alt={`Project Photo ${index + 1}`}
+                                          sx={{
+                                             width: '150px',
+                                             height: '150px',
+                                             objectFit: 'cover',
+                                             borderRadius: '8px',
+                                             boxShadow:
+                                                '0px 2px 5px rgba(0, 0, 0, 0.1)',
+                                          }}
+                                       />
+                                       <ZoomInIcon
+                                          sx={{
+                                             position: 'absolute',
+                                             top: '5px',
+                                             right: '5px',
+                                             color: 'white',
+                                             backgroundColor:
+                                                'rgba(0, 0, 0, 0.5)',
+                                             borderRadius: '50%',
+                                             padding: '2px',
+                                          }}
+                                       />
+                                    </Box>
+                                 );
+                              }
+                              return null;
+                           })
                         ) : (
                            <Typography
                               variant="body2"
                               color={colors.grey?.[300] || '#ccc'}
                            >
                               No photos available
-                           </Typography>
-                        )}
-                     </Box>
-
-                     {/* Certificates Section */}
-                     <Typography
-                        variant="h6"
-                        fontWeight="bold"
-                        color={colors.greenAccent?.[400] || '#00ff00'}
-                        mb={2}
-                     >
-                        Attached Certificates
-                     </Typography>
-                     <Box display="flex" flexDirection="column" gap={2} mb={4}>
-                        {selectedProject.documents?.length > 0 ? (
-                           selectedProject.documents.map((doc, index) => (
-                              <Button
-                                 key={index}
-                                 variant="outlined"
-                                 color="primary"
-                                 href={doc.url} // Assuming the document has a URL
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 sx={{
-                                    textTransform: 'none',
-                                    justifyContent: 'flex-start',
-                                 }}
-                              >
-                                 {doc.name || `Document ${index + 1}`}
-                              </Button>
-                           ))
-                        ) : (
-                           <Typography
-                              variant="body2"
-                              color={colors.grey?.[300] || '#ccc'}
-                           >
-                              No certificates attached
                            </Typography>
                         )}
                      </Box>
@@ -482,7 +885,7 @@ const ProjectsPage = () => {
                                  variant="contained"
                                  color="success"
                                  onClick={() =>
-                                    handleApprove(selectedProject.id)
+                                    handleApprove(selectedProject._id)
                                  }
                                  startIcon={<CheckCircleOutlineIcon />}
                               >
@@ -492,7 +895,7 @@ const ProjectsPage = () => {
                                  variant="contained"
                                  color="error"
                                  onClick={() =>
-                                    handleReject(selectedProject.id)
+                                    handleReject(selectedProject._id)
                                  }
                                  startIcon={<CancelOutlinedIcon />}
                               >
@@ -504,7 +907,7 @@ const ProjectsPage = () => {
                            <Button
                               variant="contained"
                               color="error"
-                              onClick={() => handleStop(selectedProject.id)}
+                              onClick={() => handleStop(selectedProject._id)}
                               startIcon={<CancelOutlinedIcon />}
                            >
                               Stop Project

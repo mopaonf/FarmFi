@@ -39,7 +39,7 @@ const ProjectSchema = new mongoose.Schema(
          type: Number,
          required: true,
          min: 1,
-         max: 60,
+         max: 240,
       },
       investment_model: {
          type: String,
@@ -58,26 +58,28 @@ const ProjectSchema = new mongoose.Schema(
          enum: [
             'draft',
             'under_review',
-            'active',
+            'Active',
+            'Submitted',
+            'Completed',
+            'Denied',
             'funded',
-            'completed',
             'rejected',
          ],
          default: 'draft',
       },
       photos: [
          {
-            url: String,
-            name: String,
-            type: String,
+            url: { type: String },
+            name: { type: String },
+            type: { type: String },
          },
       ],
       documents: [
          {
-            url: String,
-            name: String,
-            type: String,
-            size: Number,
+            url: { type: String },
+            name: { type: String },
+            type: { type: String },
+            size: { type: Number },
          },
       ],
       start_date: {
@@ -123,9 +125,9 @@ const ProjectSchema = new mongoose.Schema(
          required: true,
       },
       pitch_video: {
-         url: String,
-         name: String,
-         type: String,
+         url: { type: String },
+         name: { type: String },
+         type: { type: String },
       },
       farmer_bio: {
          type: String,

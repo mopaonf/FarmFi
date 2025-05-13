@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
 const AdminRoutes = require('./routes/admins/AdminRoutes');
 const FarmerRoutes = require('./routes/farmers/FarmerRoutes');
+const ProjectRoutes = require('./routes/projects/ProjectRoutes');
 const cors = require('cors');
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(
 app.use('/api/users', userRoutes);
 app.use('/api/farmers', FarmerRoutes); // Ensure this matches the frontend URL
 app.use('/api/admins', AdminRoutes); // Ensure this matches the frontend URL
+app.use('/api/projects', ProjectRoutes);
 
 // MongoDB Connection
 mongoose
