@@ -41,6 +41,15 @@ const Sidebar = () => {
    const [isCollapsed, setIsCollapsed] = useState(false);
    const [selected, setSelected] = useState('Dashboard');
 
+   const storedData = localStorage.getItem('adminData');
+   console.log('Retrieved from localStorage:', storedData);
+
+   const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+   console.log('Parsed adminData:', adminData);
+
+   const displayName = adminData?.name || 'Admin User';
+   console.log('Display Name:', displayName);
+
    return (
       <Box
          sx={{
@@ -113,7 +122,7 @@ const Sidebar = () => {
                            fontWeight="bold"
                            sx={{ m: '10px 0 0 0' }}
                         >
-                           Mopao L.
+                           {displayName}
                         </Typography>
                         <Typography
                            variant="h5"

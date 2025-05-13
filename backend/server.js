@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
+const AdminRoutes = require('./routes/admins/AdminRoutes');
 const FarmerRoutes = require('./routes/farmers/FarmerRoutes');
 const cors = require('cors');
 
@@ -21,6 +22,7 @@ app.use(
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/farmers', FarmerRoutes); // Ensure this matches the frontend URL
+app.use('/api/admins', AdminRoutes); // Ensure this matches the frontend URL
 
 // MongoDB Connection
 mongoose

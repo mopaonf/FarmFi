@@ -127,13 +127,13 @@ const Profile = () => {
                   fontSize: '40px',
                }}
             >
-               {profileData.fullName
-                  ? profileData.fullName
+               {profileData.name
+                  ? profileData.name
                        .split(' ')
                        .map((n) => n[0])
                        .join('')
                   : 'N/A'}{' '}
-               {/* Safely access fullName */}
+               {/* Safely access name */}
             </Avatar>
             <Box>
                <Typography
@@ -283,9 +283,9 @@ const Profile = () => {
                </Typography>
                <Box display="flex" flexDirection="column" gap="15px">
                   <TextField
-                     label="Full Name"
-                     name="fullName"
-                     value={profileData.fullName}
+                     label="Name"
+                     name="name" // Use "name" to match the backend
+                     value={profileData.name}
                      onChange={handleInputChange}
                      fullWidth
                      variant="outlined"

@@ -91,9 +91,11 @@ exports.updateProfile = async (req, res) => {
          req.body,
          { new: true, runValidators: true }
       ).select('-password');
+      
       if (!updatedFarmer) {
          return res.status(404).json({ message: 'Farmer not found' });
       }
+      
       res.status(200).json({
          message: 'Profile updated successfully',
          updatedFarmer,
