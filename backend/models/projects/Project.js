@@ -108,8 +108,8 @@ const ProjectSchema = new mongoose.Schema(
          type: String,
          required: true,
       },
-      return_start_year: {
-         type: String,
+      return_start_year_or_month: {
+         type: String, // e.g., "month 4" or "year 3"
          required: true,
       },
       contract_duration: {

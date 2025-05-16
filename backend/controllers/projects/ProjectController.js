@@ -42,6 +42,12 @@ exports.getProjectById = async (req, res) => {
       );
       if (!project)
          return res.status(404).json({ message: 'Project not found' });
+
+      // Ensure backward compatibility for older projects
+      if (!project.return_start_year_or_month && project.return_start_year) {
+         project.return_start_year_or_month = project.return_start_year;
+      }
+
       res.json(project);
    } catch (error) {
       res.status(500).json({ message: error.message });
