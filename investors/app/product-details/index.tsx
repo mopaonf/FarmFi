@@ -34,6 +34,7 @@ const ProductDetailsScreen: React.FC = () => {
    const router = useRouter();
    const { id } = useLocalSearchParams();
    const scrollViewRef = useRef<ScrollView>(null);
+   const [layoutWidth, setLayoutWidth] = useState(width);
 
    // Ensure hooks are not conditionally rendered
    const slides = React.useMemo(() => {
@@ -63,7 +64,7 @@ const ProductDetailsScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const res = await fetch(
-               `http://172.20.10.5:5000/api/projects/${id}`
+               `http://192.168.5.1:5000/api/projects/${id}`
             );
             const data = await res.json();
             setProject(data);
@@ -76,34 +77,12 @@ const ProductDetailsScreen: React.FC = () => {
       if (id) fetchProject();
    }, [id]);
 
-   // Auto-sliding functionality
-   useEffect(() => {
-      if (slides.length <= 1) return; // Don't auto-slide if there's only one image
-
-      const interval = setInterval(() => {
-         const nextSlide = (currentSlide + 1) % slides.length;
-         setCurrentSlide(nextSlide);
-      }, 4000); // Auto-slide every 4 seconds
-
-      return () => clearInterval(interval); // Cleanup interval on unmount
-   }, [currentSlide, slides.length]);
-
-   // Sync scroll position with currentSlide
-   useEffect(() => {
-      if (scrollViewRef.current) {
-         scrollViewRef.current.scrollTo({
-            x: currentSlide * width,
-            animated: true,
-         });
-      }
-   }, [currentSlide, width]);
-
    // Handle manual scroll to update currentSlide
    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const slideWidth = event.nativeEvent.layoutMeasurement.width;
-      const contentOffset = event.nativeEvent.contentOffset.x;
-      const index = Math.round(contentOffset / slideWidth);
-      setCurrentSlide(index);
+      const slideSize = event.nativeEvent.layoutMeasurement.width;
+      const offset = event.nativeEvent.contentOffset.x;
+      const newIndex = Math.floor(offset / slideSize);
+      setCurrentSlide(newIndex);
    };
 
    if (loading) {
@@ -144,7 +123,7 @@ const ProductDetailsScreen: React.FC = () => {
                   <Feather name="arrow-left" size={24} color="white" />
                </TouchableOpacity>
                <Text
-                  className="text-white text-xl font-bold"
+                  className="text-white text-xl font-bold ml-12"
                   numberOfLines={1}
                   style={{ width: '60%' }}
                >
@@ -163,31 +142,30 @@ const ProductDetailsScreen: React.FC = () => {
                paddingBottom: 120,
             }}
          >
-            {/* Image Carousel Section */}
-            <View className="h-[35vh] sticky top-0 z-10 bg-gray-100">
+            {/* Image Carousel Section - Simplified */}
+            <View className="h-[35vh] bg-gray-100">
                <ScrollView
-                  ref={scrollViewRef}
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
                   onScroll={handleScroll}
                   scrollEventThrottle={16}
+                  decelerationRate="fast"
                >
                   {slides.map((slide: Slide, index: number) => (
-                     <Image
-                        key={index}
-                        source={slide.uri ? { uri: slide.uri } : slide}
-                        style={{
-                           width,
-                           height: '100%',
-                        }}
-                        resizeMode="cover"
-                     />
+                     <View key={index} style={{ width }}>
+                        <Image
+                           source={slide.uri ? { uri: slide.uri } : slide}
+                           style={{ width, height: '100%' }}
+                           resizeMode="cover"
+                        />
+                     </View>
                   ))}
                </ScrollView>
-               {/* Pagination Dots */}
+
+               {/* Pagination Dots - Simplified */}
                <View className="absolute bottom-4 flex-row justify-center w-full gap-2">
-                  {slides.map((_: Slide, index: number) => (
+                  {slides.map((_, index: number) => (
                      <View
                         key={index}
                         className={`h-2 rounded-full ${
@@ -265,9 +243,7 @@ const ProductDetailsScreen: React.FC = () => {
                            }}
                            className="text-green-600 font-semibold mb-6"
                         >
-                           FCFA{' '}
-                           {project.investment_per_unit?.toLocaleString() ??
-                              'N/A'}
+                           FCFA {project.unitPrice?.toLocaleString() ?? 'N/A'}
                            <Text className="text-sm"> /unit</Text>
                         </Text>
 
@@ -277,7 +253,7 @@ const ProductDetailsScreen: React.FC = () => {
                               {
                                  icon: 'clock',
                                  label: 'First Return',
-                                 value: project.return_start_year,
+                                 value: project.return_start_year_or_month,
                               },
                               {
                                  icon: 'trending-up',
@@ -292,7 +268,9 @@ const ProductDetailsScreen: React.FC = () => {
                               {
                                  icon: 'box',
                                  label: 'Available Units',
-                                 value: project.total_units,
+                                 value:
+                                    project.totalUnits -
+                                    (project.unitsInvested || 0),
                               },
                            ].map((item, index) => (
                               <View
@@ -451,9 +429,9 @@ const ProductDetailsScreen: React.FC = () => {
                paddingBottom: 34, // Safe area padding for iPhone
             }}
          >
-            <View className="flex-row gap-4 p-4 px-6">
+            <View className="p-4 px-6">
                <TouchableOpacity
-                  className="flex-1 bg-gray-100 py-4 rounded-xl items-center"
+                  className="bg-gray-100 py-4 rounded-xl items-center"
                   style={{ elevation: 1 }}
                   onPress={() =>
                      router.push({
@@ -467,17 +445,6 @@ const ProductDetailsScreen: React.FC = () => {
                      className="text-gray-700"
                   >
                      Simulate Profit
-                  </Text>
-               </TouchableOpacity>
-               <TouchableOpacity
-                  className="flex-1 bg-orange-500 py-4 rounded-xl items-center"
-                  style={{ elevation: 1 }}
-               >
-                  <Text
-                     style={{ fontFamily: 'SF Pro Display', fontWeight: '600' }}
-                     className="text-white"
-                  >
-                     Invest Now
                   </Text>
                </TouchableOpacity>
             </View>

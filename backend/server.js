@@ -1,10 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const userRoutes = require('./routes/userRoutes');
 const AdminRoutes = require('./routes/admins/AdminRoutes');
 const FarmerRoutes = require('./routes/farmers/FarmerRoutes');
 const ProjectRoutes = require('./routes/projects/ProjectRoutes');
+const InvestorRoutes = require('./routes/investors/InvestorRoutes');
+const investmentRoutes = require('./routes/investments/InvestmentRoutes');
+const WalletRoutes = require('./routes/wallets/WalletRoutes');
 const cors = require('cors');
 
 dotenv.config();
@@ -21,11 +23,12 @@ app.use(
 );
 
 // Routes
-app.use('/api/users', userRoutes);
 app.use('/api/farmers', FarmerRoutes); // Ensure this matches the frontend URL
 app.use('/api/admins', AdminRoutes); // Ensure this matches the frontend URL
 app.use('/api/projects', ProjectRoutes);
-
+app.use('/api/investors', InvestorRoutes); // Ensure this matches the frontend URL
+app.use('/api/investments', investmentRoutes);
+app.use('/api/wallets', WalletRoutes);
 // MongoDB Connection
 mongoose
    .connect(process.env.MONGO_URI, {

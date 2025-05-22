@@ -91,11 +91,11 @@ exports.updateProfile = async (req, res) => {
          req.body,
          { new: true, runValidators: true }
       ).select('-password');
-      
+
       if (!updatedFarmer) {
          return res.status(404).json({ message: 'Farmer not found' });
       }
-      
+
       res.status(200).json({
          message: 'Profile updated successfully',
          updatedFarmer,
@@ -116,5 +116,67 @@ exports.deleteProfile = async (req, res) => {
       res.status(200).json({ message: 'Profile deleted successfully' });
    } catch (error) {
       res.status(500).json({ message: 'Server error', error });
+   }
+};
+
+// Get all farmers (Admin only)
+exports.getAllFarmers = async (req, res) => {
+   try {
+      const farmers = await Farmer.find().select('-password');
+      res.status(200).json(farmers);
+   } catch (error) {
+      console.error('Error fetching farmers:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+   }
+};
+
+// Delete farmer (Admin only)
+exports.deleteFarmer = async (req, res) => {
+   try {
+      const farmer = await Farmer.findByIdAndDelete(req.params.id);
+      if (!farmer) {
+         return res.status(404).json({ message: 'Farmer not found' });
+      }
+      res.status(200).json({ message: 'Farmer deleted successfully' });
+   } catch (error) {
+      console.error('Error deleting farmer:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+   }
+};
+
+// Admin: Get farmer by ID
+exports.getFarmerById = async (req, res) => {
+   try {
+      const farmer = await Farmer.findById(req.params.id).select('-password');
+      if (!farmer) {
+         return res.status(404).json({ message: 'Farmer not found' });
+      }
+      res.status(200).json(farmer);
+   } catch (error) {
+      res.status(500).json({
+         message: 'Error getting farmer',
+         error: error.message,
+      });
+   }
+};
+
+// Admin: Update farmer
+exports.updateFarmerByAdmin = async (req, res) => {
+   try {
+      const farmer = await Farmer.findByIdAndUpdate(
+         req.params.id,
+         { ...req.body },
+         { new: true, runValidators: true }
+      ).select('-password');
+
+      if (!farmer) {
+         return res.status(404).json({ message: 'Farmer not found' });
+      }
+      res.status(200).json({ message: 'Farmer updated successfully', farmer });
+   } catch (error) {
+      res.status(500).json({
+         message: 'Error updating farmer',
+         error: error.message,
+      });
    }
 };

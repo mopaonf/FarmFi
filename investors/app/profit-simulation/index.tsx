@@ -6,19 +6,25 @@ import {
    ScrollView,
    SafeAreaView,
    ActivityIndicator,
+   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import InvestmentModal from '../../components/InvestmentModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfitSimulationScreen: React.FC = () => {
    const [unit, setUnit] = useState(1);
    const [project, setProject] = useState<any>(null);
    const [loading, setLoading] = useState(true);
    const [data, setData] = useState<any[]>([]); // Ensure this hook is always called
+   const [showInvestModal, setShowInvestModal] = useState(false);
+   const [walletBalance, setWalletBalance] = useState(0);
    const navigation = useNavigation();
    const { id } = useLocalSearchParams(); // Get the project ID from route params
+   const router = useRouter(); // Add this line
 
    useEffect(() => {
       navigation.setOptions({
@@ -30,7 +36,7 @@ const ProfitSimulationScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const res = await fetch(
-               `http://172.20.10.5:5000/api/projects/${id}`
+               `http://192.168.5.1:5000/api/projects/${id}`
             );
             const data = await res.json();
             setProject(data);
@@ -68,7 +74,7 @@ const ProfitSimulationScreen: React.FC = () => {
             calculatedData.push({ period, netProfit: 0, roi: '0%' });
          } else {
             const netProfit = Math.round(
-               (minROI / 100) * project.investment_per_unit * unit
+               (minROI / 100) * project.unitPrice * unit
             );
 
             calculatedData.push({
@@ -81,6 +87,91 @@ const ProfitSimulationScreen: React.FC = () => {
 
       setData(calculatedData);
    }, [project, unit]);
+
+   useEffect(() => {
+      fetchWalletBalance();
+   }, []);
+
+   const fetchWalletBalance = async () => {
+      try {
+         const token = await AsyncStorage.getItem('token');
+         const response = await fetch(
+            'http://192.168.5.1:5000/api/wallets/stats',
+            {
+               headers: { Authorization: `Bearer ${token}` },
+            }
+         );
+         const data = await response.json();
+         setWalletBalance(data.balance);
+      } catch (error) {
+         console.error('Error fetching wallet balance:', error);
+      }
+   };
+
+   const handleInvestment = async () => {
+      const investmentAmount = unit * project.unitPrice;
+
+      if (walletBalance < investmentAmount) {
+         Alert.alert(
+            'Insufficient Balance',
+            'Would you like to add funds to your wallet?',
+            [
+               {
+                  text: 'Cancel',
+                  style: 'cancel',
+               },
+               {
+                  text: 'Add Funds',
+                  onPress: () =>
+                     router.push({
+                        pathname: '/wallet/deposit',
+                        params: {
+                           returnTo: 'profit-simulation',
+                           projectId: project._id,
+                        },
+                     }),
+               },
+            ]
+         );
+         return;
+      }
+
+      setShowInvestModal(true);
+   };
+
+   const handleConfirmInvestment = async (description: string) => {
+      try {
+         const token = await AsyncStorage.getItem('token');
+         const response = await fetch(
+            'http://192.168.5.1:5000/api/wallets/invest',
+            {
+               method: 'POST',
+               headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+               },
+               body: JSON.stringify({
+                  projectId: project._id,
+                  amount: unit * project.unitPrice,
+                  units: unit,
+                  description,
+               }),
+            }
+         );
+
+         if (!response.ok) {
+            throw new Error('Investment failed');
+         }
+
+         Alert.alert('Success', 'Investment submitted successfully', [
+            { text: 'OK', onPress: () => router.back() },
+         ]);
+      } catch (error) {
+         Alert.alert('Error', 'Failed to process investment');
+      } finally {
+         setShowInvestModal(false);
+      }
+   };
 
    if (loading) {
       return (
@@ -107,10 +198,10 @@ const ProfitSimulationScreen: React.FC = () => {
 
    return (
       <SafeAreaView className="flex-1 bg-white">
-         {/* Header */}
+         {/* Header with refined styling */}
          <View
             style={{
-               height: 80,
+               height: 90,
                backgroundColor: Colors.light.white,
                justifyContent: 'center',
                paddingHorizontal: 16,
@@ -119,138 +210,189 @@ const ProfitSimulationScreen: React.FC = () => {
                width: '100%',
                zIndex: 10,
                borderBottomWidth: 1,
-               borderBottomColor: '#e0e0e0',
+               borderBottomColor: '#f3f4f6',
                shadowColor: '#000',
                shadowOffset: { width: 0, height: 2 },
-               shadowOpacity: 0.1,
+               shadowOpacity: 0.05,
                shadowRadius: 3,
                elevation: 3,
             }}
          >
-            <View className="flex-row items-center justify-center">
+            <View className="flex-row items-center">
                <TouchableOpacity
-                  style={{ position: 'absolute', left: 16 }}
+                  style={{
+                     padding: 8,
+                     borderRadius: 8,
+                     backgroundColor: '#f3f4f6',
+                  }}
                   onPress={() => navigation.goBack()}
                >
-                  <Feather name="arrow-left" size={24} color="black" />
+                  <Feather name="arrow-left" size={24} color="#374151" />
                </TouchableOpacity>
-               <View className="items-center">
-                  <Text className="text-black text-xl font-bold">
+               <View className="flex-1 items-center">
+                  <Text className="text-gray-900 text-xl font-semibold text-center">
                      {project.title}
                   </Text>
-                  <Text className="text-black italic text-sm">
+                  <Text className="text-gray-500 text-sm text-center">
                      Profit Simulator
                   </Text>
+               </View>
+               <View style={{ width: 40 }}>
+                  <Text> </Text>
                </View>
             </View>
          </View>
 
-         <ScrollView className="flex-1 p-4 pt-24">
-            {/* Table */}
-            <View className="border-collapse border-gray-300 rounded-lg overflow-hidden">
-               <View
-                  className="flex-row p-2"
-                  style={{ backgroundColor: Colors.light.grayDark }}
-               >
-                  <Text className="flex-1 font-bold text-center text-white">
+         <ScrollView className="flex-1 px-4 pt-32">
+            {/* Professional table styling */}
+            <View
+               className="rounded-xl overflow-hidden border border-gray-200"
+               style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 6,
+                  elevation: 6,
+                  backgroundColor: 'white',
+               }}
+            >
+               <View className="bg-gray-50 p-4 border-b border-gray-200">
+                  {/* <Text className="text-lg font-semibold text-gray-900">
+                     {isMonthly ? 'Monthly' : 'Yearly'} Return Projection
+                  </Text> */}
+               </View>
+
+               {/* Column Headers */}
+               <View className="flex-row bg-gray-50 border-b border-gray-200">
+                  <Text className="flex-1 py-4 px-4 text-sm font-semibold text-gray-700">
                      {isMonthly ? 'Month' : 'Year'}
                   </Text>
-                  <Text className="flex-1 font-bold text-center text-white">
+                  <Text className="flex-1 py-4 px-4 text-sm font-semibold text-gray-700 text-center">
                      Net Profit (FCFA)
                   </Text>
-                  <Text className="flex-1 font-bold text-center text-white">
+                  <Text className="flex-1 py-4 px-4 text-sm font-semibold text-gray-700 text-right">
                      ROI
                   </Text>
                </View>
+
+               {/* Table Body */}
                {data.map((record, index) => (
                   <View
                      key={index}
-                     className={`flex-row p-3 ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-100'
+                     className={`flex-row border-b border-gray-100 ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                      }`}
                   >
-                     <Text className="flex-1 text-center text-gray-700">
+                     <Text className="flex-1 py-4 px-4 text-sm text-gray-900">
                         {record.period}
                      </Text>
-                     <Text className="flex-1 text-center text-gray-700">
-                        {record.netProfit.toLocaleString()}
+                     <Text className="flex-1 py-4 px-4 text-sm text-gray-900 text-center">
+                        {record.netProfit.toLocaleString()} FCFA
                      </Text>
-                     <Text className="flex-1 text-center text-gray-700">
+                     <Text className="flex-1 py-4 px-4 text-sm text-gray-900 text-right">
                         {record.roi}
                      </Text>
                   </View>
                ))}
-               {/* Total */}
+
+               {/* Table Footer */}
                <View
-                  className="flex-row p-3"
-                  style={{ backgroundColor: Colors.light.grayDark }}
+                  className="flex-row bg-gray-50 p-4"
+                  style={{
+                     borderTopWidth: 2,
+                     borderTopColor: '#e2e8f0',
+                  }}
                >
-                  <Text className="flex-1 font-bold text-center text-white">
+                  <Text className="flex-1 font-semibold text-gray-900">
                      Total
                   </Text>
-                  <Text className="flex-1 font-bold text-center text-white">
+                  <Text className="flex-1 font-semibold text-gray-900 text-center">
                      {totalNetProfit.toLocaleString()} FCFA
                   </Text>
-                  <Text className="flex-1 text-center"></Text>
+                  <Text className="flex-1"></Text>
                </View>
             </View>
 
             {/* Disclaimer */}
-            <Text className="text-sm text-gray-600 mt-4 leading-6">
-               Disclaimer: The above figures are estimates and subject to change
-               based on market conditions. Past performance is not indicative of
-               future results. Please consult with a financial advisor before
-               making any investment decisions. All investments carry risks,
-               including the risk of loss. The information provided is for
-               educational purposes only and should not be considered as
-               financial advice.
-            </Text>
-         </ScrollView>
-
-         {/* Footer */}
-         <View
-            className="p-4 border-t border-gray-300 bg-white"
-            style={{
-               position: 'absolute',
-               bottom: 0,
-               left: 0,
-               right: 0,
-               marginBottom: 10,
-            }}
-         >
-            {/* Unit Controls */}
-            <View className="flex-row items-center justify-between mb-4">
-               <View className="flex-row items-center">
-                  <TouchableOpacity
-                     onPress={() => setUnit((prev) => Math.max(prev - 1, 1))}
-                     className="p-2 rounded-lg px-4"
-                     style={{ backgroundColor: Colors.light.primaryDark }}
-                  >
-                     <Text className="text-lg font-bold text-white">-</Text>
-                  </TouchableOpacity>
-                  <Text className="mx-4 text-lg font-bold">{unit}</Text>
-                  <TouchableOpacity
-                     onPress={() => setUnit((prev) => prev + 1)}
-                     className="p-2 rounded-lg px-4"
-                     style={{ backgroundColor: Colors.light.primaryDark }}
-                  >
-                     <Text className="text-lg font-bold text-white">+</Text>
-                  </TouchableOpacity>
-               </View>
-               {/* Total Amount */}
-               <Text className="text-lg font-bold">
-                  {`FCFA ${(
-                     unit * project.investment_per_unit
-                  ).toLocaleString()}`}
+            <View className="mt-6 p-4 bg-gray-50 rounded-lg">
+               <Text className="text-sm text-gray-600 leading-relaxed">
+                  The figures presented are estimates based on historical data
+                  and projections. Actual returns may vary depending on market
+                  conditions and other factors. Please consult with a financial
+                  advisor before making investment decisions.
                </Text>
             </View>
-            {/* Calculate Button */}
-            <TouchableOpacity className="bg-orange-500 p-3 rounded-lg py-5">
-               <Text className="text-white font-bold text-center">
-                  Calculate
+         </ScrollView>
+
+         {/* Footer Controls */}
+         <View className="border-t border-gray-200 bg-white p-4">
+            <View className="flex-row items-center justify-between mb-4">
+               <View className="flex-row items-center space-x-4">
+                  <TouchableOpacity
+                     onPress={() => setUnit((prev) => Math.max(prev - 1, 1))}
+                     className="w-10 h-10 rounded-lg items-center justify-center"
+                     style={{
+                        backgroundColor: '#f3f4f6',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                        elevation: 3,
+                     }}
+                  >
+                     <Text className="text-gray-900 text-lg font-bold">-</Text>
+                  </TouchableOpacity>
+
+                  <Text className="text-lg font-medium text-gray-900">
+                     {unit} {unit === 1 ? 'Unit' : 'Units'}
+                  </Text>
+
+                  <TouchableOpacity
+                     onPress={() => setUnit((prev) => prev + 1)}
+                     className="w-10 h-10 rounded-lg items-center justify-center"
+                     style={{
+                        backgroundColor: '#f3f4f6',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                        elevation: 3,
+                     }}
+                  >
+                     <Text className="text-gray-900 text-lg font-bold">+</Text>
+                  </TouchableOpacity>
+               </View>
+
+               <Text className="text-lg font-medium text-gray-900">
+                  {(unit * project.unitPrice).toLocaleString()} FCFA
+               </Text>
+            </View>
+
+            <TouchableOpacity
+               className="bg-orange-500 p-4 rounded-xl"
+               style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4,
+               }}
+               onPress={handleInvestment}
+            >
+               <Text className="text-white text-center font-medium">
+                  Invest Now ({unit} {unit === 1 ? 'Unit' : 'Units'})
                </Text>
             </TouchableOpacity>
          </View>
+
+         <InvestmentModal
+            visible={showInvestModal}
+            onClose={() => setShowInvestModal(false)}
+            onConfirm={handleConfirmInvestment}
+            amount={unit * project.unitPrice}
+            units={unit}
+            projectTitle={project.title}
+         />
       </SafeAreaView>
    );
 };

@@ -24,19 +24,22 @@ import Ref_Agriculture from '../../assets/images/Product_WhitePepper.png';
 
 const HomeScreen: React.FC = () => {
    const [projects, setProjects] = useState<any[]>([]);
+   const [filteredProjects, setFilteredProjects] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
 
    useEffect(() => {
       const fetchProjects = async () => {
          try {
             const res = await fetch(
-               'http://172.20.10.5:5000/api/projects?status=Active'
+               'http://192.168.5.1:5000/api/projects?status=Active'
             );
             const data = await res.json();
-            console.log('Fetched projects:', data); // Debug: log the response
-            setProjects(Array.isArray(data) ? data : []);
+            const projectsData = Array.isArray(data) ? data : [];
+            setProjects(projectsData);
+            setFilteredProjects(projectsData);
          } catch (e) {
             setProjects([]);
+            setFilteredProjects([]);
          } finally {
             setLoading(false);
          }
@@ -44,11 +47,88 @@ const HomeScreen: React.FC = () => {
       fetchProjects();
    }, []);
 
+   const handleSearch = (searchText: string) => {
+      if (!searchText.trim()) {
+         setFilteredProjects(projects);
+         return;
+      }
+
+      const searchQuery = searchText.toLowerCase();
+      const filtered = projects.filter((project) => {
+         return (
+            project.title?.toLowerCase().includes(searchQuery) ||
+            project.description?.toLowerCase().includes(searchQuery) ||
+            project.location?.toLowerCase().includes(searchQuery) ||
+            project.contract_duration?.toLowerCase().includes(searchQuery)
+         );
+      });
+
+      setFilteredProjects(filtered);
+   };
+
+   const handleFilterChange = (filterId: string) => {
+      if (!projects.length) return;
+
+      let filtered = [...projects];
+
+      switch (filterId) {
+         case 'return':
+            // Sort by highest ROI
+            filtered.sort((a, b) => {
+               const getROI = (roi: string) => {
+                  return parseFloat(
+                     roi?.split('-')[0]?.replace('%', '') || '0'
+                  );
+               };
+               return (
+                  getROI(b.expected_roi_range) - getROI(a.expected_roi_range)
+               );
+            });
+            break;
+
+         case 'best_trial':
+            // Filter projects with shorter return start period
+            filtered.sort((a, b) => {
+               const getStartPeriod = (period: string) => {
+                  return parseInt(period?.replace(/year |month /, '') || '0');
+               };
+               return (
+                  getStartPeriod(a.return_start_year_or_month) -
+                  getStartPeriod(b.return_start_year_or_month)
+               );
+            });
+            break;
+
+         case 'long_run':
+            // Sort by longest duration
+            filtered.sort((a, b) => {
+               return (b.duration_in_months || 0) - (a.duration_in_months || 0);
+            });
+            break;
+
+         case 'short_run':
+            // Sort by shortest duration
+            filtered.sort((a, b) => {
+               return (a.duration_in_months || 0) - (b.duration_in_months || 0);
+            });
+            break;
+      }
+
+      setFilteredProjects(filtered);
+   };
+
+   // Set initial filtered projects when projects are loaded
+   useEffect(() => {
+      if (projects.length > 0) {
+         handleFilterChange('return'); // Apply default filter
+      }
+   }, [projects]);
+
    return (
       <SafeAreaView className="flex-1 bg-white">
          <View className="pt-2 px-6 flex-row items-center justify-between bg-">
             <View className="w-[85%]">
-               <SearchBar />
+               <SearchBar onSearch={handleSearch} />
             </View>
             <TouchableOpacity>
                <Feather name="bell" size={26} color="#9ca3af" />
@@ -56,7 +136,7 @@ const HomeScreen: React.FC = () => {
          </View>
 
          <View className="mt-8 pl-3">
-            <FilterSelector />
+            <FilterSelector onFilterChange={handleFilterChange} />
          </View>
 
          <ScrollView className="pt-6">
@@ -69,10 +149,11 @@ const HomeScreen: React.FC = () => {
                >
                   {loading ? (
                      <Text>Loading...</Text>
-                  ) : !Array.isArray(projects) || projects.length === 0 ? (
+                  ) : !Array.isArray(filteredProjects) ||
+                    filteredProjects.length === 0 ? (
                      <Text>No active projects found.</Text>
                   ) : (
-                     projects.map((project) => (
+                     filteredProjects.map((project) => (
                         <ProductCard
                            key={project._id}
                            name={
@@ -83,15 +164,15 @@ const HomeScreen: React.FC = () => {
                                       .join(' ')
                                  : ''
                            }
-                           isAvailable={project.status === 'Active'}
+                           isAvailable={project.status === 'active'}
                            returnRate={
                               typeof project.expected_roi_range === 'string'
                                  ? project.expected_roi_range
                                  : ''
                            }
                            investmentAmount={
-                              project.investment_per_unit
-                                 ? `Fcfa ${project.investment_per_unit.toLocaleString()}`
+                              project.unitPrice
+                                 ? `Fcfa ${project.unitPrice.toLocaleString()}`
                                  : ''
                            }
                            images={

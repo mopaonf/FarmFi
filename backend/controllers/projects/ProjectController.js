@@ -1,12 +1,11 @@
 const Project = require('../../models/projects/Project');
 
-// Farmer submits a project
-exports.createProject = async (req, res) => {
+const createProject = async (req, res) => {
    try {
       const project = new Project({
          ...req.body,
          farmer: req.user.id,
-         status: 'Submitted',
+         status: 'submitted', // Ensure lowercase
       });
       await project.save();
       res.status(201).json(project);
@@ -16,24 +15,39 @@ exports.createProject = async (req, res) => {
    }
 };
 
-// Admin: Get all projects (optionally filter by status)
-exports.getAllProjects = async (req, res) => {
+const getAllProjects = async (req, res) => {
    try {
       const { status } = req.query;
-      const filter = status ? { status } : {};
-      // No .select() on Project, only populate farmer's name/email
-      const projects = await Project.find(filter).populate(
-         'farmer',
-         'name email'
-      );
-      res.json(projects);
+      let filter = {};
+
+      if (status) {
+         filter.status = new RegExp(`^${status}$`, 'i');
+      }
+
+      const projects = await Project.find(filter)
+         .populate('farmer', 'name email')
+         .sort('-createdAt');
+
+      // Calculate available units and add to response
+      const processedProjects = projects.map((project) => {
+         const availableUnits =
+            project.totalUnits - (project.unitsInvested || 0);
+         return {
+            ...project.toObject(),
+            availableUnits,
+            isAvailable:
+               availableUnits > 0 && project.fundingStatus !== 'completed',
+         };
+      });
+
+      res.json(processedProjects);
    } catch (error) {
+      console.error('Error fetching projects:', error);
       res.status(500).json({ message: error.message });
    }
 };
 
-// Admin: Get project details
-exports.getProjectById = async (req, res) => {
+const getProjectById = async (req, res) => {
    try {
       // No .select() on Project, only populate farmer's name/email
       const project = await Project.findById(req.params.id).populate(
@@ -44,8 +58,12 @@ exports.getProjectById = async (req, res) => {
          return res.status(404).json({ message: 'Project not found' });
 
       // Ensure backward compatibility for older projects
-      if (!project.return_start_year_or_month && project.return_start_year) {
-         project.return_start_year_or_month = project.return_start_year;
+      if (
+         !project.return_start_year_or_month &&
+         project.return_start_year_or_month
+      ) {
+         project.return_start_year_or_month =
+            project.return_start_year_or_month;
       }
 
       res.json(project);
@@ -54,16 +72,18 @@ exports.getProjectById = async (req, res) => {
    }
 };
 
-// Admin: Approve or reject project
-exports.updateProjectStatus = async (req, res) => {
+const updateProjectStatus = async (req, res) => {
    try {
       const { status } = req.body;
-      if (!['Active', 'Denied'].includes(status)) {
+      // Convert status to lowercase and validate
+      const normalizedStatus = status.toLowerCase();
+      if (!['active', 'denied'].includes(normalizedStatus)) {
          return res.status(400).json({ message: 'Invalid status' });
       }
+
       const project = await Project.findByIdAndUpdate(
          req.params.id,
-         { status },
+         { status: normalizedStatus },
          { new: true }
       );
       if (!project)
@@ -72,4 +92,35 @@ exports.updateProjectStatus = async (req, res) => {
    } catch (error) {
       res.status(500).json({ message: error.message });
    }
+};
+
+const getProjectFundingStatus = async (req, res) => {
+   try {
+      const project = await Project.findById(req.params.id);
+      if (!project) {
+         return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const fundingDetails = {
+         totalUnits: project.totalUnits,
+         unitsInvested: project.unitsInvested,
+         fundingProgress: project.fundingProgress,
+         fundingStatus: project.fundingStatus,
+         remainingUnits: project.totalUnits - project.unitsInvested,
+         totalAmount: project.totalUnits * project.unitPrice,
+         raisedAmount: project.unitsInvested * project.unitPrice,
+      };
+
+      res.json(fundingDetails);
+   } catch (error) {
+      res.status(500).json({ error: error.message });
+   }
+};
+
+module.exports = {
+   createProject,
+   getAllProjects,
+   getProjectById,
+   updateProjectStatus,
+   getProjectFundingStatus,
 };

@@ -15,7 +15,6 @@ import {
    Paper,
    CircularProgress,
    useTheme,
-   Divider,
 } from '@mui/material';
 import { tokens } from '../../theme';
 import {
@@ -252,7 +251,7 @@ const FundingProgressPage = () => {
                            >
                               {
                                  filteredProjects.filter(
-                                    (project) => project.status === 'Completed'
+                                    (project) => project.status === 'completed'
                                  ).length
                               }
                            </Typography>
@@ -277,7 +276,7 @@ const FundingProgressPage = () => {
                            >
                               {
                                  filteredProjects.filter(
-                                    (project) => project.status === 'Submitted'
+                                    (project) => project.status === 'submitted'
                                  ).length
                               }
                            </Typography>

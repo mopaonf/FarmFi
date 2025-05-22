@@ -30,7 +30,7 @@ const ProfitSimulationScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const res = await fetch(
-               `http://172.20.10.5:5000/api/projects/${id}`
+               `http://192.168.5.1:5000/api/projects/${id}`
             );
             const data = await res.json();
             setProject(data);
@@ -55,7 +55,7 @@ const ProfitSimulationScreen: React.FC = () => {
          .map((value) => parseFloat(value) * 1000000) || [0, 0];
 
       const startYear = parseInt(
-         project.return_start_year?.replace('year ', '') || '0'
+         project.return_start_year_or_month?.replace('year ', '') || '0'
       );
       const duration = 10; // Assuming a 10-year contract
 
@@ -71,11 +71,9 @@ const ProfitSimulationScreen: React.FC = () => {
 
             const roi =
                project.return_frequency === 'yearly'
-                  ? `${Math.round(
-                       (netProfit / project.investment_per_unit) * 100
-                    )}%`
+                  ? `${Math.round((netProfit / project.unitPrice) * 100)}%`
                   : `${Math.round(
-                       ((netProfit * 12) / project.investment_per_unit) * 100
+                       ((netProfit * 12) / project.unitPrice) * 100
                     )}%`;
 
             calculatedData.push({ year, netProfit, roi });

@@ -73,11 +73,11 @@ const SubmitProject = () => {
       start_date: null,
       end_date: null,
       is_draft: true,
-      investment_per_unit: '',
-      total_units: '',
+      unitPrice: '',
+      totalUnits: '',
       expected_roi_range: '',
       return_frequency: '',
-      return_start_year: '',
+      return_start_year_or_month: '',
       contract_duration: '',
       annual_net_profit_estimate: '',
       risks_and_mitigation: '',
@@ -310,8 +310,8 @@ const SubmitProject = () => {
                budget_total: Number(formData.budget_total),
                funding_goal: Number(formData.funding_goal),
                duration_in_months: Number(formData.duration_in_months),
-               investment_per_unit: Number(formData.investment_per_unit),
-               total_units: Number(formData.total_units),
+               unitPrice: Number(formData.unitPrice),
+               totalUnits: Number(formData.totalUnits),
                start_date: formData.start_date
                   ? new Date(formData.start_date).toISOString()
                   : null,
@@ -656,11 +656,11 @@ const SubmitProject = () => {
                         required
                         type="number"
                         label="Investment per Unit"
-                        name="investment_per_unit"
-                        value={formData.investment_per_unit}
+                        name="unitPrice"
+                        value={formData.unitPrice}
                         onChange={handleChange}
-                        error={!!errors.investment_per_unit}
-                        helperText={errors.investment_per_unit}
+                        error={!!errors.unitPrice}
+                        helperText={errors.unitPrice}
                         InputProps={{
                            startAdornment: (
                               <InputAdornment position="start">
@@ -677,11 +677,11 @@ const SubmitProject = () => {
                         required
                         type="number"
                         label="Total Units (Stock)"
-                        name="total_units"
-                        value={formData.total_units}
+                        name="totalUnits"
+                        value={formData.totalUnits}
                         onChange={handleChange}
-                        error={!!errors.total_units}
-                        helperText={errors.total_units}
+                        error={!!errors.totalUnits}
+                        helperText={errors.totalUnits}
                         inputProps={{ min: 0 }}
                      />
                   </Grid>
@@ -716,11 +716,11 @@ const SubmitProject = () => {
                         fullWidth
                         required
                         label="Return Start Year"
-                        name="return_start_year"
-                        value={formData.return_start_year}
+                        name="return_start_year_or_month"
+                        value={formData.return_start_year_or_month}
                         onChange={handleChange}
-                        error={!!errors.return_start_year}
-                        helperText={errors.return_start_year}
+                        error={!!errors.return_start_year_or_month}
+                        helperText={errors.return_start_year_or_month}
                         placeholder="E.g., Year 5"
                      />
                   </Grid>

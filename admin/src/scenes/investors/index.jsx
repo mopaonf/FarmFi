@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
    Box,
    Typography,
@@ -22,7 +22,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { mockDataInvestors } from '../../data/mockData';
 
 const InvestorsPage = () => {
    const theme = useTheme();
@@ -30,20 +29,57 @@ const InvestorsPage = () => {
    const [searchQuery, setSearchQuery] = useState('');
    const [selectedFilter, setSelectedFilter] = useState('All');
    const [investmentRange, setInvestmentRange] = useState([0, 1000000]);
+   const [investors, setInvestors] = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState(null);
+
+   useEffect(() => {
+      fetchInvestors();
+   }, []);
+
+   const fetchInvestors = async () => {
+      try {
+         const response = await fetch('http://localhost:5000/api/investors/');
+         if (!response.ok) throw new Error('Failed to fetch investors');
+         const data = await response.json();
+         setInvestors(data);
+      } catch (err) {
+         setError(err.message);
+      } finally {
+         setLoading(false);
+      }
+   };
 
    // Filter investors based on search query, selected filter, and investment range
-   const filteredInvestors = mockDataInvestors.filter((investor) => {
+   const filteredInvestors = investors.filter((investor) => {
       const matchesSearch =
-         investor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         investor.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         investor.phone.includes(searchQuery);
+         (investor.name || '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+         (investor.email || '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase());
       const matchesFilter =
          selectedFilter === 'All' || investor.type === selectedFilter;
+      const investorAmount = investor.totalInvestment || 0;
       const matchesInvestmentRange =
-         investor.totalInvestment >= investmentRange[0] &&
-         investor.totalInvestment <= investmentRange[1];
+         investorAmount >= investmentRange[0] &&
+         investorAmount <= investmentRange[1];
       return matchesSearch && matchesFilter && matchesInvestmentRange;
    });
+
+   if (loading)
+      return (
+         <Box m="20px">
+            <Typography>Loading...</Typography>
+         </Box>
+      );
+   if (error)
+      return (
+         <Box m="20px">
+            <Typography color="error">{error}</Typography>
+         </Box>
+      );
 
    return (
       <Box m="20px">
@@ -179,7 +215,7 @@ const InvestorsPage = () => {
                            {investor.type}
                         </TableCell>
                         <TableCell sx={{ color: colors.grey[300] }}>
-                           {investor.totalInvestment.toLocaleString()}
+                           {(investor.totalInvestment || 0).toLocaleString()}
                         </TableCell>
                         <TableCell>
                            <Box display="flex" gap={1}>

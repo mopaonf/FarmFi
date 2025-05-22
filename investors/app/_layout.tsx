@@ -4,7 +4,7 @@ import {
    ThemeProvider,
 } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Redirect } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -30,15 +30,21 @@ export default function RootLayout() {
          >
             <Stack screenOptions={{ headerShown: false }}>
                <Stack.Screen name="index" />
-               <Stack.Screen
-                  name="(auth)"
-                  options={{
-                     headerShown: false,
-                     title: '',
-                  }}
-               />
+               <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
+               <Stack.Screen name="(auth)" />
                <Stack.Screen name="(tabs)" />
-               <Stack.Screen name="+not-found" />
+               <Stack.Screen
+                  name="product/[id]"
+                  options={{ headerShown: false }}
+               />
+               <Stack.Screen
+                  name="profit-simulation/[id]"
+                  options={{ headerShown: false }}
+               />
+               <Stack.Screen
+                  name="wallet/[type]"
+                  options={{ headerShown: false }}
+               />
             </Stack>
             <StatusBar style="auto" />
          </ThemeProvider>

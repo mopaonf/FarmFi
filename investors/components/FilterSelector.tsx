@@ -7,6 +7,10 @@ interface FilterOption {
    label: string;
 }
 
+interface FilterSelectorProps {
+   onFilterChange?: (filterId: string) => void;
+}
+
 const filters: FilterOption[] = [
    { id: 'return', label: 'Highest Return' },
    { id: 'best_trial', label: 'Best trial' },
@@ -14,31 +18,37 @@ const filters: FilterOption[] = [
    { id: 'short_run', label: 'Short run' },
 ];
 
-const FilterSelector: React.FC = () => {
+const FilterSelector: React.FC<FilterSelectorProps> = ({ onFilterChange }) => {
    const [active, setActive] = React.useState('return');
 
+   const handleFilterPress = (filterId: string) => {
+      setActive(filterId);
+      onFilterChange?.(filterId);
+   };
+
    return (
-      <ScrollView 
-         horizontal 
+      <ScrollView
+         horizontal
          showsHorizontalScrollIndicator={false}
          className="px-4"
       >
          {filters.map((filter) => (
             <TouchableOpacity
                key={filter.id}
-               onPress={() => setActive(filter.id)}
+               onPress={() => handleFilterPress(filter.id)}
                className="mr-6"
             >
-               <Text 
-                  style={{ 
-                     color: active === filter.id ? Colors.light.primary : '#6b7280'
+               <Text
+                  style={{
+                     color:
+                        active === filter.id ? Colors.light.primary : '#6b7280',
                   }}
                   className="text-2xl font-medium font-[Poppins_500Medium]"
                >
                   {filter.label}
                </Text>
                {active === filter.id && (
-                  <View 
+                  <View
                      style={{ backgroundColor: Colors.light.primary }}
                      className="h-0.5 w-10 mt-1"
                   />

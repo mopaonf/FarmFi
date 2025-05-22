@@ -150,7 +150,7 @@ const Projects = () => {
                alignItems="center"
                mt={2}
             >
-               {['Active', 'Submitted', 'Denied', 'Completed'].map((filter) => (
+               {['active', 'submitted', 'denied', 'completed'].map((filter) => (
                   <Typography
                      key={filter}
                      variant="h6"
@@ -430,10 +430,8 @@ const Projects = () => {
                               mb={1}
                            >
                               <strong>Investment per Unit:</strong> FCFA{' '}
-                              {project.investment_per_unit != null
-                                 ? Number(
-                                      project.investment_per_unit
-                                   ).toLocaleString()
+                              {project.unitPrice != null
+                                 ? Number(project.unitPrice).toLocaleString()
                                  : 'N/A'}
                            </Typography>
                            <Typography
@@ -441,8 +439,7 @@ const Projects = () => {
                               color={colors.grey[700]}
                               mb={1}
                            >
-                              <strong>Total Units:</strong>{' '}
-                              {project.total_units}
+                              <strong>Total Units:</strong> {project.totalUnits}
                            </Typography>
                            <Typography
                               variant="body2"
@@ -466,7 +463,7 @@ const Projects = () => {
                               mb={1}
                            >
                               <strong>Return Start Year:</strong>{' '}
-                              {project.return_start_year}
+                              {project.return_start_year_or_month}
                            </Typography>
                            <Typography
                               variant="body2"

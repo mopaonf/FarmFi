@@ -5,12 +5,10 @@ import {
    Card,
    Select,
    MenuItem,
-   IconButton,
-   Tooltip,
-   useTheme,
    Modal,
    Button,
    Divider,
+   useTheme,
 } from '@mui/material';
 import { tokens } from '../../theme';
 import axios from 'axios';
@@ -226,11 +224,11 @@ const ProjectsPage = () => {
                         <span
                            style={{
                               color:
-                                 project.status === 'Submitted'
+                                 project.status === 'submitted'
                                     ? colors.yellowAccent?.[400] || '#ff0'
-                                    : project.status === 'Active'
+                                    : project.status === 'active'
                                     ? colors.greenAccent?.[400] || '#0f0'
-                                    : project.status === 'Denied'
+                                    : project.status === 'denied'
                                     ? colors.redAccent?.[400] || '#f00'
                                     : colors.grey?.[300] || '#ccc',
                            }}
@@ -313,10 +311,8 @@ const ProjectsPage = () => {
                               mb={1}
                            >
                               <strong>Investment per Unit:</strong> FCFA{' '}
-                              {project.investment_per_unit != null
-                                 ? Number(
-                                      project.investment_per_unit
-                                   ).toLocaleString()
+                              {project.unitPrice != null
+                                 ? Number(project.unitPrice).toLocaleString()
                                  : 'N/A'}
                            </Typography>
                            <Typography
@@ -324,8 +320,7 @@ const ProjectsPage = () => {
                               color={colors.grey?.[300] || '#ccc'}
                               mb={1}
                            >
-                              <strong>Total Units:</strong>{' '}
-                              {project.total_units}
+                              <strong>Total Units:</strong> {project.totalUnits}
                            </Typography>
                            <Typography
                               variant="body2"
@@ -349,7 +344,7 @@ const ProjectsPage = () => {
                               mb={1}
                            >
                               <strong>Return Start Year:</strong>{' '}
-                              {project.return_start_year}
+                              {project.return_start_year_or_month}
                            </Typography>
                            <Typography
                               variant="body2"
@@ -652,10 +647,8 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Investment per Unit:</strong> FCFA{' '}
-                        {selectedProject.investment_per_unit != null
-                           ? Number(
-                                selectedProject.investment_per_unit
-                             ).toLocaleString()
+                        {selectedProject.unitPrice != null
+                           ? Number(selectedProject.unitPrice).toLocaleString()
                            : 'N/A'}
                      </Typography>
                      <Typography
@@ -664,7 +657,7 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Total Units:</strong>{' '}
-                        {selectedProject.total_units}
+                        {selectedProject.totalUnits}
                      </Typography>
                      <Typography
                         variant="body1"
@@ -688,7 +681,7 @@ const ProjectsPage = () => {
                         mb={2}
                      >
                         <strong>Return Start Year:</strong>{' '}
-                        {selectedProject.return_start_year}
+                        {selectedProject.return_start_year_or_month}
                      </Typography>
                      <Typography
                         variant="body1"
@@ -879,7 +872,7 @@ const ProjectsPage = () => {
                      </Box>
 
                      <Box display="flex" justifyContent="space-between" mt={4}>
-                        {selectedProject.status === 'Submitted' && (
+                        {selectedProject.status === 'submitted' && (
                            <>
                               <Button
                                  variant="contained"
@@ -903,7 +896,7 @@ const ProjectsPage = () => {
                               </Button>
                            </>
                         )}
-                        {selectedProject.status === 'Active' && (
+                        {selectedProject.status === 'active' && (
                            <Button
                               variant="contained"
                               color="error"

@@ -49,7 +49,7 @@ const AuthScreen: React.FC = () => {
 
          // Replace 192.168.1.X with your computer's IP address
          const response = await fetch(
-            `http://172.20.10.5:5000/api/users/${endpoint}`,
+            `http://192.168.5.1:5000/api/investors/${endpoint}`,
             {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },

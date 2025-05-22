@@ -5,25 +5,29 @@ const {
    getProfile,
    updateProfile,
    deleteProfile,
+   getAllFarmers,
+   deleteFarmer,
+   getFarmerById, // Add this
+   updateFarmerByAdmin, // Add this
 } = require('../../controllers/farmers/FarmerController');
 const authMiddleware = require('../../middleware/farmers/authMiddleware');
-const Project = require('../../models/projects/Project');
+const adminAuth = require('../../middleware/admins/authMiddleware');
 
 const router = express.Router();
 
-// Signup route
+// Public routes
 router.post('/signup', signup);
-
-// Login route
 router.post('/login', login);
 
-// Get profile route
+// Admin routes (must come before protected routes)
+router.get('/', adminAuth, getAllFarmers);
+router.get('/:id', adminAuth, getFarmerById);
+router.delete('/:id', adminAuth, deleteFarmer);
+router.put('/:id', adminAuth, updateFarmerByAdmin);
+
+// Protected farmer routes
 router.get('/profile', authMiddleware, getProfile);
-
-// Update profile route
-router.put('/profile', authMiddleware, updateProfile); // Ensure this route exists
-
-// Delete profile route
+router.put('/profile', authMiddleware, updateProfile);
 router.delete('/profile', authMiddleware, deleteProfile);
 
 // Get all projects for the logged-in farmer

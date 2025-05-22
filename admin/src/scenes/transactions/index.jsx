@@ -14,11 +14,9 @@ import {
    Select,
    MenuItem,
    useTheme,
-   Tooltip,
 } from '@mui/material';
 import { tokens } from '../../theme';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import { mockTransactions } from '../../data/mockData';
 
 const TransactionPage = () => {

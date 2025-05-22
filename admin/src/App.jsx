@@ -10,6 +10,7 @@ import FarmersPage from './scenes/farmers';
 import TransactionPage from './scenes/transactions';
 import InvestorsPage from './scenes/investors';
 import FundingProgressPage from './scenes/fundingprogress';
+import InvestmentConfirmationPage from './scenes/investmentconfirmation';
 
 const App = () => {
    const [theme, colorMode] = useMode();
@@ -31,6 +32,10 @@ const App = () => {
                         <Route
                            path="/transactions"
                            element={<TransactionPage />}
+                        />
+                        <Route
+                           path="/investment-confirmation"
+                           element={<InvestmentConfirmationPage />}
                         />
                         <Route
                            path="/funding"

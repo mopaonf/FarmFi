@@ -58,14 +58,13 @@ const ProjectSchema = new mongoose.Schema(
          enum: [
             'draft',
             'under_review',
-            'Active',
-            'Submitted',
-            'Completed',
-            'Denied',
+            'active',
             'funded',
-            'rejected',
+            'completed',
+            'denied',
          ],
          default: 'draft',
+         set: (v) => v.toLowerCase(),
       },
       photos: [
          {
@@ -89,16 +88,6 @@ const ProjectSchema = new mongoose.Schema(
       end_date: {
          type: Date,
          required: true,
-      },
-      investment_per_unit: {
-         type: Number,
-         required: true,
-         min: 0,
-      },
-      total_units: {
-         type: Number,
-         required: true,
-         min: 0,
       },
       expected_roi_range: {
          type: String,
@@ -138,11 +127,19 @@ const ProjectSchema = new mongoose.Schema(
          ref: 'Farmer',
          required: true,
       },
-      progress: {
+      unitPrice: {
+         type: Number,
+         required: true,
+         min: 0,
+      },
+      totalUnits: {
+         type: Number,
+         required: true,
+         min: 0,
+      },
+      unitsInvested: {
          type: Number,
          default: 0,
-         min: 0,
-         max: 100,
       },
       total_invested: {
          type: Number,
@@ -153,6 +150,16 @@ const ProjectSchema = new mongoose.Schema(
          type: Number,
          default: 0,
          min: 0,
+      },
+      fundingStatus: {
+         type: String,
+         enum: ['pending', 'funding', 'funded', 'completed'],
+         default: 'pending',
+         set: (v) => v.toLowerCase(),
+      },
+      fundingProgress: {
+         type: Number,
+         default: 0, // Percentage of funding completed
       },
    },
    {
@@ -176,5 +183,21 @@ ProjectSchema.pre('save', function (next) {
    }
    next();
 });
+
+// Add method to update funding status automatically
+ProjectSchema.methods.updateFundingStatus = function () {
+   const progress = (this.unitsInvested / this.totalUnits) * 100;
+   this.fundingProgress = progress;
+
+   if (progress === 0) {
+      this.fundingStatus = 'pending';
+   } else if (progress < 100) {
+      this.fundingStatus = 'funding';
+   } else if (progress >= 100) {
+      this.fundingStatus = 'funded';
+   }
+
+   return this.save();
+};
 
 module.exports = mongoose.model('Project', ProjectSchema);

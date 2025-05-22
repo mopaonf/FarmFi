@@ -1,15 +1,21 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { Colors } from '../constants/Colors';
 
-const SearchBar = () => {
+interface SearchBarProps {
+   onSearch?: (text: string) => void;
+}
+
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
    return (
-      <View className="flex-row items-center space-x-6 px-7 py-2 bg-white rounded-full shadow-[0_2px_3px_rgb(0,0,0,0.1)]">
-         <Feather name="search" size={24} color="#666" />
+      <View className="flex-row items-center bg-gray-100 rounded-xl px-4 h-[45px]">
+         <Feather name="search" size={20} color="#9ca3af" />
          <TextInput
-            placeholder="Search products investment"
-            className="flex-1 px-5 text-base h-8"
-            placeholderTextColor="#666"
+            placeholder="Search products..."
+            className="flex-1 ml-3 text-base"
+            placeholderTextColor="#9ca3af"
+            onChangeText={onSearch}
          />
       </View>
    );
