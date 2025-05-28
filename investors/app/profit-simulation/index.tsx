@@ -196,6 +196,14 @@ const ProfitSimulationScreen: React.FC = () => {
 
    const isMonthly = project.duration_in_months <= 12;
 
+   // Calculate max units available
+   const maxUnits =
+      project &&
+      typeof project.totalUnits === 'number' &&
+      typeof project.unitsInvested === 'number'
+         ? project.totalUnits - project.unitsInvested
+         : 0;
+
    return (
       <SafeAreaView className="flex-1 bg-white">
          {/* Header with refined styling */}
@@ -348,7 +356,11 @@ const ProfitSimulationScreen: React.FC = () => {
                   </Text>
 
                   <TouchableOpacity
-                     onPress={() => setUnit((prev) => prev + 1)}
+                     onPress={() =>
+                        setUnit((prev) =>
+                           maxUnits > 0 ? Math.min(prev + 1, maxUnits) : prev
+                        )
+                     }
                      className="w-10 h-10 rounded-lg items-center justify-center"
                      style={{
                         backgroundColor: '#f3f4f6',
@@ -358,6 +370,7 @@ const ProfitSimulationScreen: React.FC = () => {
                         shadowRadius: 4,
                         elevation: 3,
                      }}
+                     disabled={unit >= maxUnits}
                   >
                      <Text className="text-gray-900 text-lg font-bold">+</Text>
                   </TouchableOpacity>

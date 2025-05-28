@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
    Box,
    Typography,
@@ -17,26 +17,118 @@ import {
    useTheme,
 } from '@mui/material';
 import { tokens } from '../../theme';
-import {
-   projects,
-   mockTransactions,
-   mockDataContacts,
-} from '../../data/mockData';
+// Remove mockData imports
 import { ResponsivePie } from '@nivo/pie';
+import axios from 'axios';
 
 const FundingProgressPage = () => {
    const theme = useTheme();
    const colors = tokens(theme.palette.mode);
+   const [farmers, setFarmers] = useState([]);
+   const [projects, setProjects] = useState([]);
    const [selectedFarmer, setSelectedFarmer] = useState('');
    const [selectedProject, setSelectedProject] = useState('');
    const [disbursementAmount, setDisbursementAmount] = useState('');
    const [isDisbursing, setIsDisbursing] = useState(false);
    const [disbursementHistory, setDisbursementHistory] = useState([]);
+   const [loading, setLoading] = useState(true);
+
+   // Add state for totalInvestment and disbursementHistory fetched from backend
+   const [totalInvestment, setTotalInvestment] = useState(0);
+   const [projectDisbursementHistory, setProjectDisbursementHistory] = useState(
+      []
+   );
+   const [farmerTotalInvestment, setFarmerTotalInvestment] = useState(0);
+
+   // Fetch farmers from backend on mount
+   useEffect(() => {
+      const fetchFarmers = async () => {
+         try {
+            const token = localStorage.getItem('adminToken');
+            const res = await axios.get('http://localhost:5000/api/farmers', {
+               headers: { Authorization: `Bearer ${token}` },
+            });
+            setFarmers(res.data);
+         } catch (err) {
+            setFarmers([]);
+         }
+      };
+      fetchFarmers();
+   }, []);
+
+   // Fetch projects for selected farmer from backend
+   useEffect(() => {
+      if (!selectedFarmer) {
+         setProjects([]);
+         setSelectedProject('');
+         return;
+      }
+      const fetchProjects = async () => {
+         try {
+            const token = localStorage.getItem('adminToken');
+            // Only fetch projects created by the selected farmer
+            const res = await axios.get(
+               `http://localhost:5000/api/projects?farmer=${selectedFarmer}`,
+               { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setProjects(res.data);
+         } catch (err) {
+            setProjects([]);
+         }
+      };
+      fetchProjects();
+   }, [selectedFarmer]);
+
+   // Fetch total investment and disbursement history for selected project
+   useEffect(() => {
+      if (!selectedProject) {
+         setTotalInvestment(0);
+         setProjectDisbursementHistory([]);
+         return;
+      }
+      const fetchProjectStats = async () => {
+         try {
+            const token = localStorage.getItem('adminToken');
+            // Backend endpoint should return { totalInvestment, disbursementHistory }
+            const res = await axios.get(
+               `http://localhost:5000/api/projects/${selectedProject}/funding-progress`,
+               { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setTotalInvestment(res.data.totalInvestment || 0);
+            setProjectDisbursementHistory(res.data.disbursementHistory || []);
+         } catch (err) {
+            setTotalInvestment(0);
+            setProjectDisbursementHistory([]);
+         }
+      };
+      fetchProjectStats();
+   }, [selectedProject]);
+
+   // Fetch total investment for all projects of selected farmer
+   useEffect(() => {
+      if (!selectedFarmer) {
+         setFarmerTotalInvestment(0);
+         return;
+      }
+      const fetchFarmerTotalInvestment = async () => {
+         try {
+            const token = localStorage.getItem('adminToken');
+            const res = await axios.get(
+               `http://localhost:5000/api/projects/farmer/${selectedFarmer}/total-investment`,
+               { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setFarmerTotalInvestment(res.data.totalInvestment || 0);
+         } catch (err) {
+            setFarmerTotalInvestment(0);
+         }
+      };
+      fetchFarmerTotalInvestment();
+   }, [selectedFarmer]);
 
    // Handle farmer selection
    const handleFarmerChange = (event) => {
       setSelectedFarmer(event.target.value);
-      setSelectedProject(''); // Reset project selection when farmer changes
+      setSelectedProject('');
    };
 
    // Handle project selection
@@ -44,38 +136,62 @@ const FundingProgressPage = () => {
       setSelectedProject(event.target.value);
    };
 
-   // Calculate total investment for the selected project
-   const totalInvestment = mockTransactions
-      .filter((transaction) => transaction.project === selectedProject)
-      .reduce((sum, transaction) => sum + parseFloat(transaction.amount), 0);
-
    // Handle disbursement
-   const handleDisbursement = () => {
+   const handleDisbursement = async () => {
       if (!disbursementAmount || disbursementAmount <= 0) {
          alert('Please enter a valid disbursement amount.');
+         return;
+      }
+      if (!selectedFarmer || !selectedProject) {
+         alert('Please select a farmer and project.');
          return;
       }
 
       setIsDisbursing(true);
 
-      // Simulate API call
-      setTimeout(() => {
+      try {
+         const token = localStorage.getItem('adminToken');
+         const res = await axios.post(
+            'http://localhost:5000/api/wallets/admin-disburse-farmer',
+            {
+               farmerId: selectedFarmer,
+               projectId: selectedProject,
+               amount: Number(disbursementAmount),
+               description: `Disbursement for project ${selectedProject}`,
+            },
+            {
+               headers: { Authorization: `Bearer ${token}` },
+            }
+         );
+         // Optionally update disbursement history here by refetching or pushing new record
          setDisbursementHistory((prev) => [
             ...prev,
             {
                id: `DSB${Date.now()}`,
                project: selectedProject,
-               amount: disbursementAmount,
+               amount: Number(disbursementAmount),
                date: new Date().toLocaleDateString(),
             },
          ]);
          setDisbursementAmount('');
-         setIsDisbursing(false);
          alert('Disbursement successful!');
-      }, 1500);
+      } catch (err) {
+         alert(
+            err.response?.data?.message ||
+               err.response?.data?.error ||
+               'Disbursement failed'
+         );
+      } finally {
+         setIsDisbursing(false);
+      }
    };
 
-   // Pie chart data
+   // Get selected project details (move this above pieData definition)
+   const selectedProjectDetails = projects.find(
+      (project) => project._id === selectedProject
+   );
+
+   // Pie chart data using real totalInvestment and funding goal
    const pieData = [
       {
          id: 'Invested',
@@ -85,20 +201,21 @@ const FundingProgressPage = () => {
       {
          id: 'Remaining Goal',
          value:
-            projects.find((project) => project.title === selectedProject)
-               ?.fundingGoal - totalInvestment || 0,
+            (selectedProjectDetails?.funding_goal || 0) - totalInvestment > 0
+               ? (selectedProjectDetails?.funding_goal || 0) - totalInvestment
+               : 0,
          color: colors.redAccent[400],
       },
    ];
 
    // Get selected farmer details
-   const selectedFarmerDetails = mockDataContacts.find(
-      (farmer) => farmer.id === parseInt(selectedFarmer) // Ensure IDs are compared as numbers
+   const selectedFarmerDetails = farmers.find(
+      (farmer) => farmer._id === selectedFarmer
    );
 
-   // Filter projects by selected farmer
+   // Filter projects for selected farmer
    const filteredProjects = projects.filter(
-      (project) => project.farmerId === selectedFarmerDetails?.id // Match farmerId with selected farmer's ID
+      (project) => project.farmer?._id === selectedFarmer
    );
 
    return (
@@ -133,8 +250,8 @@ const FundingProgressPage = () => {
                <MenuItem value="" disabled>
                   Select a Farmer
                </MenuItem>
-               {mockDataContacts.map((farmer) => (
-                  <MenuItem key={farmer.id} value={farmer.id}>
+               {farmers.map((farmer) => (
+                  <MenuItem key={farmer._id} value={farmer._id}>
                      {farmer.name}
                   </MenuItem>
                ))}
@@ -150,9 +267,6 @@ const FundingProgressPage = () => {
                   </Typography>
                   <Typography variant="body1" color={colors.grey[100]} mb={1}>
                      <strong>Phone:</strong> {selectedFarmerDetails.phone}
-                  </Typography>
-                  <Typography variant="body1" color={colors.grey[100]} mb={1}>
-                     <strong>City:</strong> {selectedFarmerDetails.city}
                   </Typography>
                   <Typography variant="body1" color={colors.grey[100]} mb={1}>
                      <strong>Address:</strong> {selectedFarmerDetails.address}
@@ -215,20 +329,7 @@ const FundingProgressPage = () => {
                               fontWeight="bold"
                               color={colors.grey[100]}
                            >
-                              FCFA{' '}
-                              {mockTransactions
-                                 .filter((transaction) =>
-                                    filteredProjects.some(
-                                       (project) =>
-                                          project.title === transaction.project
-                                    )
-                                 )
-                                 .reduce(
-                                    (sum, transaction) =>
-                                       sum + parseFloat(transaction.amount),
-                                    0
-                                 )
-                                 .toLocaleString()}
+                              FCFA {farmerTotalInvestment.toLocaleString()}
                            </Typography>
                         </Box>
                         <Box
@@ -304,7 +405,7 @@ const FundingProgressPage = () => {
             </Typography>
             <Select
                value={selectedProject}
-               onChange={handleProjectChange}
+               onChange={(e) => setSelectedProject(e.target.value)}
                displayEmpty
                fullWidth
                sx={{
@@ -318,43 +419,78 @@ const FundingProgressPage = () => {
                <MenuItem value="" disabled>
                   Select a Project
                </MenuItem>
-               {filteredProjects.map((project) => (
-                  <MenuItem key={project.id} value={project.title}>
-                     {project.title}
-                  </MenuItem>
-               ))}
+               {/* Only show projects created by the selected farmer */}
+               {projects
+                  .filter((project) => project.farmer?._id === selectedFarmer)
+                  .map((project) => (
+                     <MenuItem key={project._id} value={project._id}>
+                        {project.title}
+                     </MenuItem>
+                  ))}
             </Select>
 
-            {selectedProject && (
+            {selectedProjectDetails && (
                <>
-                  <Box mb={4}>
-                     <Typography
-                        variant="body1"
-                        color={colors.grey[100]}
-                        mb={1}
-                     >
-                        <strong>Total Investment:</strong> FCFA{' '}
-                        {totalInvestment.toLocaleString()}
-                     </Typography>
-                     <Box width="300px" height="300px">
-                        <ResponsivePie
-                           data={pieData}
-                           margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-                           innerRadius={0.5}
-                           padAngle={0.7}
-                           cornerRadius={3}
-                           colors={{ datum: 'data.color' }}
-                           borderWidth={1}
-                           borderColor={{
-                              from: 'color',
-                              modifiers: [['darker', 0.2]],
-                           }}
-                           radialLabelsSkipAngle={10}
-                           radialLabelsTextColor={colors.grey[100]}
-                           radialLabelsLinkColor={colors.grey[100]}
-                           sliceLabelsSkipAngle={10}
-                           sliceLabelsTextColor={colors.grey[100]}
-                        />
+                  <Typography variant="body1" color={colors.grey[100]} mb={1}>
+                     <strong>Title:</strong> {selectedProjectDetails.title}
+                  </Typography>
+                  <Typography variant="body1" color={colors.grey[100]} mb={1}>
+                     <strong>Status:</strong> {selectedProjectDetails.status}
+                  </Typography>
+                  <Typography variant="body1" color={colors.grey[100]} mb={1}>
+                     <strong>Funding Goal:</strong> FCFA{' '}
+                     {selectedProjectDetails.funding_goal?.toLocaleString() ||
+                        'N/A'}
+                  </Typography>
+
+                  <Box
+                     mb={4}
+                     display="flex"
+                     justifyContent="center"
+                     alignItems="center"
+                  >
+                     <Box>
+                        <Typography
+                           variant="body1"
+                           color={colors.grey[100]}
+                           mb={1}
+                           align="center"
+                        >
+                           <strong>Total Investment:</strong> FCFA{' '}
+                           {totalInvestment.toLocaleString()}
+                        </Typography>
+                        <Box
+                           width={{ xs: '100%', sm: 400, md: 500 }}
+                           height={{ xs: 350, sm: 400, md: 450 }}
+                           display="flex"
+                           justifyContent="center"
+                           alignItems="center"
+                           mx="auto"
+                        >
+                           <ResponsivePie
+                              data={pieData}
+                              margin={{
+                                 top: 40,
+                                 right: 80,
+                                 bottom: 80,
+                                 left: 80,
+                              }}
+                              innerRadius={0.5}
+                              padAngle={0.7}
+                              cornerRadius={3}
+                              colors={{ datum: 'data.color' }}
+                              borderWidth={1}
+                              borderColor={{
+                                 from: 'color',
+                                 modifiers: [['darker', 0.2]],
+                              }}
+                              radialLabelsSkipAngle={10}
+                              radialLabelsTextColor={colors.grey[100]}
+                              radialLabelsLinkColor={colors.grey[100]}
+                              sliceLabelsSkipAngle={10}
+                              sliceLabelsTextColor={colors.grey[100]}
+                           />
+                        </Box>
                      </Box>
                   </Box>
 
@@ -433,22 +569,33 @@ const FundingProgressPage = () => {
                               </TableRow>
                            </TableHead>
                            <TableBody>
-                              {disbursementHistory.map((disbursement) => (
-                                 <TableRow key={disbursement.id}>
-                                    <TableCell sx={{ color: colors.grey[300] }}>
-                                       {disbursement.id}
-                                    </TableCell>
-                                    <TableCell sx={{ color: colors.grey[300] }}>
-                                       {disbursement.project}
-                                    </TableCell>
-                                    <TableCell sx={{ color: colors.grey[300] }}>
-                                       {disbursement.amount.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell sx={{ color: colors.grey[300] }}>
-                                       {disbursement.date}
-                                    </TableCell>
-                                 </TableRow>
-                              ))}
+                              {projectDisbursementHistory.map(
+                                 (disbursement) => (
+                                    <TableRow key={disbursement.id}>
+                                       <TableCell
+                                          sx={{ color: colors.grey[300] }}
+                                       >
+                                          {disbursement.id}
+                                       </TableCell>
+                                       <TableCell
+                                          sx={{ color: colors.grey[300] }}
+                                       >
+                                          {disbursement.projectTitle ||
+                                             selectedProjectDetails?.title}
+                                       </TableCell>
+                                       <TableCell
+                                          sx={{ color: colors.grey[300] }}
+                                       >
+                                          {disbursement.amount.toLocaleString()}
+                                       </TableCell>
+                                       <TableCell
+                                          sx={{ color: colors.grey[300] }}
+                                       >
+                                          {disbursement.date}
+                                       </TableCell>
+                                    </TableRow>
+                                 )
+                              )}
                            </TableBody>
                         </Table>
                      </TableContainer>

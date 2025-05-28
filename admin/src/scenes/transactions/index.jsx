@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
    Box,
    Typography,
@@ -14,24 +14,111 @@ import {
    Select,
    MenuItem,
    useTheme,
+   CircularProgress,
+   Alert,
+   Dialog,
+   DialogTitle,
+   DialogContent,
+   DialogActions,
+   Button,
+   Tooltip,
+   Grid,
 } from '@mui/material';
 import { tokens } from '../../theme';
 import SearchIcon from '@mui/icons-material/Search';
-import { mockTransactions } from '../../data/mockData';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import { format } from 'date-fns';
+
+const formatDate = (dateString) => {
+   try {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return format(date, 'MMM d, yyyy HH:mm');
+   } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Invalid Date';
+   }
+};
 
 const TransactionPage = () => {
    const theme = useTheme();
-   const colors = tokens(theme.palette.mode) || {}; // Ensure colors is always an object
+   const colors = tokens(theme.palette.mode);
+
+   const getStatusColor = (status) => {
+      if (!status) return colors?.grey?.[100] || '#fff';
+
+      switch (status.toLowerCase()) {
+         case 'completed':
+         case 'confirmed':
+            return colors?.greenAccent?.[500] || '#4caf50';
+         case 'pending':
+            return colors?.yellowAccent?.[500] || '#ffc107';
+         case 'failed':
+         case 'rejected':
+            return colors?.redAccent?.[500] || '#f44336';
+         default:
+            return colors?.grey?.[100] || '#fff';
+      }
+   };
+
    const [searchQuery, setSearchQuery] = useState('');
    const [selectedFilter, setSelectedFilter] = useState('All');
+   const [transactions, setTransactions] = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState(null);
+   const [selectedTransaction, setSelectedTransaction] = useState(null);
+   const [detailsModal, setDetailsModal] = useState(false);
+
+   useEffect(() => {
+      fetchTransactions();
+   }, []);
+
+   const fetchTransactions = async () => {
+      try {
+         const token = localStorage.getItem('adminToken');
+         const response = await fetch(
+            'http://localhost:5000/api/transactions',
+            {
+               headers: {
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+
+         if (!response.ok) {
+            throw new Error('Failed to fetch transactions');
+         }
+
+         const data = await response.json();
+         setTransactions(data);
+      } catch (error) {
+         setError(error.message);
+      } finally {
+         setLoading(false);
+      }
+   };
+
+   const handleViewDetails = (transaction) => {
+      setSelectedTransaction(transaction);
+      setDetailsModal(true);
+   };
 
    // Filter transactions based on search query and selected filter
-   const filteredTransactions = mockTransactions.filter((transaction) => {
+   const filteredTransactions = transactions.filter((transaction) => {
       const matchesSearch =
-         transaction.txId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         transaction.user.toLowerCase().includes(searchQuery.toLowerCase());
+         transaction?.reference
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+         transaction?.user?.name
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+         transaction?.user?.email
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase());
       const matchesFilter =
-         selectedFilter === 'All' || transaction.status === selectedFilter;
+         selectedFilter === 'All' ||
+         transaction?.status?.toLowerCase() === selectedFilter.toLowerCase();
       return matchesSearch && matchesFilter;
    });
 
@@ -117,13 +204,13 @@ const TransactionPage = () => {
                <TableHead>
                   <TableRow>
                      <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
-                        Transaction ID
+                        Reference
                      </TableCell>
                      <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
                         User
                      </TableCell>
                      <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
-                        Date
+                        Type
                      </TableCell>
                      <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
                         Amount (FCFA)
@@ -131,32 +218,61 @@ const TransactionPage = () => {
                      <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
                         Status
                      </TableCell>
+                     <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
+                        Date
+                     </TableCell>
+                     <TableCell sx={{ color: colors.grey?.[100] || '#fff' }}>
+                        Actions
+                     </TableCell>
                   </TableRow>
                </TableHead>
                <TableBody>
                   {filteredTransactions.map((transaction) => (
-                     <TableRow key={transaction.txId}>
+                     <TableRow key={transaction._id}>
                         <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.txId}
+                           {transaction.reference}
                         </TableCell>
                         <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.user}
+                           {transaction.type === 'disbursement'
+                              ? 'Admin'
+                              : transaction?.user?.name || 'Unknown User'}
+                           {transaction.type !== 'disbursement' && transaction?.user?.email && (
+                              <Typography
+                                 variant="caption"
+                                 display="block"
+                                 color={colors.grey?.[400]}
+                              >
+                                 {transaction.user.email}
+                              </Typography>
+                           )}
                         </TableCell>
                         <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.date}
+                           {transaction.type}
                         </TableCell>
                         <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.cost.toLocaleString()}
+                           {transaction.amount.toLocaleString()}
                         </TableCell>
-                        <TableCell
-                           sx={{
-                              color:
-                                 transaction.status === 'Completed'
-                                    ? colors.greenAccent?.[400] || '#0f0'
-                                    : colors.yellowAccent?.[400] || '#ff0',
-                           }}
-                        >
-                           {transaction.status}
+                        <TableCell>
+                           <Typography
+                              color={getStatusColor(transaction?.status)}
+                              sx={{ textTransform: 'capitalize' }}
+                           >
+                              {transaction?.status || 'Unknown'}
+                           </Typography>
+                        </TableCell>
+                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
+                           {formatDate(transaction.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                           <IconButton
+                              onClick={() => handleViewDetails(transaction)}
+                           >
+                              <Tooltip title="View Details">
+                                 <VisibilityIcon
+                                    sx={{ color: colors.blueAccent[400] }}
+                                 />
+                              </Tooltip>
+                           </IconButton>
                         </TableCell>
                      </TableRow>
                   ))}
@@ -164,13 +280,199 @@ const TransactionPage = () => {
             </Table>
          </TableContainer>
 
-         {/* No Results Message */}
-         {filteredTransactions.length === 0 && (
-            <Box textAlign="center" mt={4}>
-               <Typography variant="h6" color={colors.grey?.[300] || '#ccc'}>
-                  No transactions found matching your criteria.
-               </Typography>
+         {/* Transaction Details Modal */}
+         <Dialog
+            open={detailsModal}
+            onClose={() => setDetailsModal(false)}
+            maxWidth="md"
+            fullWidth
+         >
+            {selectedTransaction && (
+               <>
+                  <DialogTitle
+                     sx={{
+                        bgcolor: colors.primary[400],
+                        color: colors.grey[100],
+                     }}
+                  >
+                     Transaction Details
+                  </DialogTitle>
+                  <DialogContent sx={{ bgcolor: colors.primary[400], mt: 2 }}>
+                     <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                           <Typography variant="h6" color={colors.grey[100]}>
+                              Transaction Information
+                           </Typography>
+                           <Box
+                              sx={{
+                                 bgcolor: colors.primary[500],
+                                 p: 2,
+                                 borderRadius: 1,
+                                 mt: 1,
+                              }}
+                           >
+                              <Grid container spacing={2}>
+                                 <Grid item xs={6}>
+                                    <Typography color={colors.grey[300]}>
+                                       Reference:
+                                    </Typography>
+                                    <Typography color={colors.grey[100]}>
+                                       {selectedTransaction.reference}
+                                    </Typography>
+                                 </Grid>
+                                 <Grid item xs={6}>
+                                    <Typography color={colors.grey[300]}>
+                                       Amount:
+                                    </Typography>
+                                    <Typography color={colors.grey[100]}>
+                                       {selectedTransaction.amount?.toLocaleString()}{' '}
+                                       FCFA
+                                    </Typography>
+                                 </Grid>
+                                 <Grid item xs={6}>
+                                    <Typography color={colors.grey[300]}>
+                                       Type:
+                                    </Typography>
+                                    <Typography color={colors.grey[100]}>
+                                       {selectedTransaction.type}
+                                    </Typography>
+                                 </Grid>
+                                 <Grid item xs={6}>
+                                    <Typography color={colors.grey[300]}>
+                                       Status:
+                                    </Typography>
+                                    <Typography
+                                       color={getStatusColor(
+                                          selectedTransaction.status
+                                       )}
+                                    >
+                                       {selectedTransaction.status}
+                                    </Typography>
+                                 </Grid>
+                                 <Grid item xs={12}>
+                                    <Typography color={colors.grey[300]}>
+                                       Date:
+                                    </Typography>
+                                    <Typography color={colors.grey[100]}>
+                                       {formatDate(
+                                          selectedTransaction.createdAt
+                                       )}
+                                    </Typography>
+                                 </Grid>
+                                 {selectedTransaction.description && (
+                                    <Grid item xs={12}>
+                                       <Typography color={colors.grey[300]}>
+                                          Description:
+                                       </Typography>
+                                       <Typography color={colors.grey[100]}>
+                                          {selectedTransaction.description}
+                                       </Typography>
+                                    </Grid>
+                                 )}
+                              </Grid>
+                           </Box>
+                        </Grid>
+
+                        {/* Related Investment or Project for disbursement */}
+                        {selectedTransaction.type === 'investment' && selectedTransaction.investment ? (
+                           <Grid item xs={12}>
+                              <Typography variant="h6" color={colors.grey[100]}>
+                                 Related Investment
+                              </Typography>
+                              <Box
+                                 sx={{
+                                    bgcolor: colors.primary[500],
+                                    p: 2,
+                                    borderRadius: 1,
+                                    mt: 1,
+                                 }}
+                              >
+                                 <Grid container spacing={2}>
+                                    <Grid item xs={6}>
+                                       <Typography color={colors.grey[300]}>
+                                          Project:
+                                       </Typography>
+                                       <Typography color={colors.grey[100]}>
+                                          {selectedTransaction.investment.project?.title || 'N/A'}
+                                       </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                       <Typography color={colors.grey[300]}>
+                                          Units:
+                                       </Typography>
+                                       <Typography color={colors.grey[100]}>
+                                          {selectedTransaction.investment.units ?? 'N/A'}
+                                       </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                       <Typography color={colors.grey[300]}>
+                                          Investment Amount:
+                                       </Typography>
+                                       <Typography color={colors.grey[100]}>
+                                          {selectedTransaction.investment.amount?.toLocaleString() || 'N/A'} FCFA
+                                       </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                       <Typography color={colors.grey[300]}>
+                                          Investment Status:
+                                       </Typography>
+                                       <Typography
+                                          color={getStatusColor(selectedTransaction.investment.status)}
+                                       >
+                                          {selectedTransaction.investment.status || 'N/A'}
+                                       </Typography>
+                                    </Grid>
+                                 </Grid>
+                              </Box>
+                           </Grid>
+                        ) : selectedTransaction.type === 'disbursement' && selectedTransaction.project ? (
+                           <Grid item xs={12}>
+                              <Typography variant="h6" color={colors.grey[100]}>
+                                 Related Project
+                              </Typography>
+                              <Box
+                                 sx={{
+                                    bgcolor: colors.primary[500],
+                                    p: 2,
+                                    borderRadius: 1,
+                                    mt: 1,
+                                 }}
+                              >
+                                 <Grid container spacing={2}>
+                                    <Grid item xs={12}>
+                                       <Typography color={colors.grey[300]}>
+                                          Project:
+                                       </Typography>
+                                       <Typography color={colors.grey[100]}>
+                                          {selectedTransaction.project.title || 'N/A'}
+                                       </Typography>
+                                    </Grid>
+                                 </Grid>
+                              </Box>
+                           </Grid>
+                        ) : null}
+                     </Grid>
+                  </DialogContent>
+                  <DialogActions sx={{ bgcolor: colors.primary[400] }}>
+                     <Button onClick={() => setDetailsModal(false)}>
+                        Close
+                     </Button>
+                  </DialogActions>
+               </>
+            )}
+         </Dialog>
+
+         {/* Loading and Error States */}
+         {loading && (
+            <Box display="flex" justifyContent="center" m={4}>
+               <CircularProgress />
             </Box>
+         )}
+
+         {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+               {error}
+            </Alert>
          )}
       </Box>
    );

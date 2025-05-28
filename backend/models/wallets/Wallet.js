@@ -10,6 +10,7 @@ const transactionSchema = new mongoose.Schema({
          'payout',
          'admin-credit',
          'admin-debit',
+         'disbursement', 
       ],
       required: true,
    },
@@ -45,6 +46,7 @@ const transactionSchema = new mongoose.Schema({
       type: String,
       unique: true,
       required: true,
+      sparse: true, // <-- add this line
    },
    paymentMethod: {
       type: String,
@@ -60,9 +62,15 @@ const transactionSchema = new mongoose.Schema({
 const walletSchema = new mongoose.Schema({
    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Investor', // ✅ fixed reference here
       required: true,
       unique: true,
+      // Allow both Investor and Farmer
+      refPath: 'userType',
+   },
+   userType: {
+      type: String,
+      required: true,
+      enum: ['Investor', 'Farmer'],
    },
    balance: {
       type: Number,
@@ -97,3 +105,17 @@ const walletSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Wallet', walletSchema);
+
+// Example document to insert into the wallets collection for an investor:
+// {
+//    userId: ObjectId("682bbf0a084d7b2d92a766dc"),
+//    userType: "Investor",
+//    balance: 0,
+//    currency: "FCFA",
+//    transactions: [],
+//    lastUpdated: new Date(),
+//    totalInvested: 0,
+//    totalReturns: 0,
+//    pendingReturns: 0,
+//    isLocked: false
+// }

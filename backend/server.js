@@ -7,6 +7,7 @@ const ProjectRoutes = require('./routes/projects/ProjectRoutes');
 const InvestorRoutes = require('./routes/investors/InvestorRoutes');
 const investmentRoutes = require('./routes/investments/InvestmentRoutes');
 const WalletRoutes = require('./routes/wallets/WalletRoutes');
+const transactionRoutes = require('./routes/transactions/TransactionRoutes');
 const cors = require('cors');
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use('/api/projects', ProjectRoutes);
 app.use('/api/investors', InvestorRoutes); // Ensure this matches the frontend URL
 app.use('/api/investments', investmentRoutes);
 app.use('/api/wallets', WalletRoutes);
+app.use('/api/transactions', transactionRoutes);
 // MongoDB Connection
 mongoose
    .connect(process.env.MONGO_URI, {

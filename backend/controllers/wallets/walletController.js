@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Wallet = require('../../models/wallets/Wallet');
 const Investment = require('../../models/investments/Investment');
 const { generateTransactionRef } = require('../../utils/helpers');
@@ -22,10 +23,15 @@ exports.getWallet = async (req, res) => {
 };
 
 exports.depositFunds = async (req, res) => {
-   const { amount, description } = req.body;
+   let { amount, description } = req.body;
    const userId = req.user.id;
 
-   if (amount <= 0) return res.status(400).json({ message: 'Invalid amount' });
+   // Ensure amount is a number
+   amount = Number(amount);
+
+   if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
+   }
 
    try {
       const wallet = await Wallet.findOne({ userId });
@@ -254,12 +260,49 @@ exports.processReturns = async (req, res) => {
 
 exports.getWalletStats = async (req, res) => {
    try {
-      const wallet = await Wallet.findOne({ userId: req.user.id });
-      if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+      // Safely access all possible sources
+      let userId =
+         (req.user && (req.user.id || req.user._id || req.user.userId)) ||
+         req.userId ||
+         (req.body && req.body.userId) ||
+         (req.query && req.query.userId);
+
+      if (!userId) {
+         return res.status(400).json({
+            message:
+               'User ID not found in request. Please provide userId in the request body, query, or ensure authentication is set up.',
+         });
+      }
+
+      // Handle ObjectId conversion more safely
+      let objectId;
+      if (typeof userId === 'string') {
+         if (mongoose.Types.ObjectId.isValid(userId)) {
+            objectId = new mongoose.Types.ObjectId(userId);
+         } else {
+            return res.status(400).json({ message: 'Invalid user ID format' });
+         }
+      } else {
+         objectId = userId;
+      }
+
+      // Try to find wallet without userType first, then with specific userType
+      let wallet = await Wallet.findOne({ userId: objectId });
+
+      if (!wallet) {
+         // If not found, try with userType filters
+         wallet =
+            (await Wallet.findOne({ userId: objectId, userType: 'Farmer' })) ||
+            (await Wallet.findOne({ userId: objectId, userType: 'Investor' }));
+      }
+
+      if (!wallet) {
+         return res.status(404).json({ message: 'Wallet not found' });
+      }
 
       // Get total confirmed investments
       const investments = await Investment.find({
-         investor: req.user.id,
+         investor: objectId, // Use objectId instead of req.user.id
          status: 'confirmed',
       });
 
@@ -278,6 +321,7 @@ exports.getWalletStats = async (req, res) => {
 
       res.json(stats);
    } catch (err) {
+      console.error('Wallet stats error:', err);
       res.status(500).json({ message: err.message });
    }
 };
@@ -324,5 +368,41 @@ exports.getTransactions = async (req, res) => {
    } catch (error) {
       console.error('Transaction fetch error:', error);
       res.status(500).json({ message: error.message });
+   }
+};
+
+exports.adminDisburseToFarmer = async (req, res) => {
+   const { farmerId, projectId, amount, description } = req.body;
+   if (!farmerId || !projectId || !amount) {
+      return res.status(400).json({ message: 'Missing required fields' });
+   }
+   try {
+      // Find or create farmer wallet
+      let wallet = await Wallet.findOne({
+         userId: farmerId,
+         userType: 'Farmer',
+      });
+      if (!wallet) {
+         wallet = new Wallet({
+            userId: farmerId,
+            userType: 'Farmer',
+            balance: 0,
+            transactions: [],
+         });
+      }
+      wallet.balance += amount;
+      wallet.transactions.push({
+         type: 'disbursement',
+         amount,
+         status: 'confirmed',
+         project: projectId,
+         description: description || `Disbursement for project ${projectId}`,
+         reference: generateTransactionRef(),
+      });
+      wallet.lastUpdated = new Date();
+      await wallet.save();
+      res.json({ message: 'Disbursement successful', balance: wallet.balance });
+   } catch (err) {
+      res.status(500).json({ message: err.message });
    }
 };

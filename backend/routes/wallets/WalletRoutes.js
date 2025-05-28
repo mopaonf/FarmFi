@@ -30,5 +30,6 @@ router.post(
 );
 router.post('/process-returns/:userId', walletController.processReturns);
 router.post('/admin-credit', walletController.adminCreditWallet);
+router.post('/admin-disburse-farmer', walletController.adminDisburseToFarmer);
 
 module.exports = router;

@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
-import { Box, Button, Typography, TextField } from '@mui/material';
+import {
+   Box,
+   Button,
+   Typography,
+   TextField,
+   Grid,
+   Paper,
+   useTheme,
+} from '@mui/material';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const MotionBox = motion(Box);
 
 const AuthPage = () => {
    const [isSignUp, setIsSignUp] = useState(true);
@@ -9,8 +20,13 @@ const AuthPage = () => {
       name: '',
       email: '',
       password: '',
+      phone: '',
+      address: '',
+      country: '',
    });
+
    const navigate = useNavigate();
+   const theme = useTheme();
 
    const handleChange = (e) => {
       setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,114 +39,183 @@ const AuthPage = () => {
          : 'http://localhost:5000/api/farmers/login';
 
       try {
-         const response = await axios.post(url, formData);
-         const { token } = response.data;
+         const payload = isSignUp
+            ? {
+                 ...formData,
+                 // Ensure all fields are strings and trimmed
+                 name: formData.name?.trim(),
+                 email: formData.email?.trim(),
+                 password: formData.password,
+                 phone: formData.phone?.trim(),
+                 address: formData.address?.trim(),
+                 country: formData.country?.trim(),
+              }
+            : {
+                 email: formData.email?.trim(),
+                 password: formData.password,
+              };
 
-         // Save token to localStorage
+         // Remove any undefined fields (for login)
+         Object.keys(payload).forEach(
+            (key) => payload[key] === undefined && delete payload[key]
+         );
+
+         const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+         });
+         const { token } = response.data;
          localStorage.setItem('token', token);
 
-         // Navigate to dashboard on successful login
          if (!isSignUp) navigate('/dashboard');
          else alert('Signup successful! Please log in.');
       } catch (error) {
-         alert(error.response?.data?.message || 'An error occurred');
+         // Show backend error message if available
+         alert(
+            error.response?.data?.message ||
+               error.response?.data?.error ||
+               'Something went wrong'
+         );
       }
    };
 
    return (
       <Box
          sx={{
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #e8f5e9 0%, #a5d6a7 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '100vh',
-            backgroundColor: '#f5f5f5',
+            px: 2,
          }}
       >
-         <Box
+         <MotionBox
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            component={Paper}
+            elevation={6}
             sx={{
                width: '100%',
-               maxWidth: 400,
-               backgroundColor: '#fff',
+               maxWidth: 480,
+               borderRadius: 3,
                p: 4,
-               borderRadius: 2,
-               boxShadow: 3,
+               backgroundColor: '#fff',
             }}
          >
             <Typography
                variant="h4"
+               align="center"
                fontWeight="bold"
-               textAlign="center"
+               gutterBottom
                color="green"
-               mb={2}
             >
-               {isSignUp ? 'Sign Up' : 'Log In'}
+               {isSignUp ? 'Farmer Sign Up' : 'Log In'}
             </Typography>
+
             <Box component="form" onSubmit={handleSubmit}>
-               {isSignUp && (
-                  <TextField
-                     fullWidth
-                     label="Name"
-                     name="name"
-                     variant="outlined"
-                     margin="normal"
-                     value={formData.name}
-                     onChange={handleChange}
-                  />
-               )}
-               <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  variant="outlined"
-                  margin="normal"
-                  value={formData.email}
-                  onChange={handleChange}
-               />
-               <TextField
-                  fullWidth
-                  label="Password"
-                  name="password"
-                  type="password"
-                  variant="outlined"
-                  margin="normal"
-                  value={formData.password}
-                  onChange={handleChange}
-               />
-               <Box
-                  sx={{
-                     display: 'flex',
-                     justifyContent: 'space-between',
-                     mt: 3,
-                  }}
-               >
+               <Grid container spacing={2}>
+                  {isSignUp && (
+                     <>
+                        <Grid item xs={12}>
+                           <TextField
+                              fullWidth
+                              name="name"
+                              label="Full Name"
+                              variant="outlined"
+                              value={formData.name}
+                              onChange={handleChange}
+                              required
+                           />
+                        </Grid>
+                        <Grid item xs={12}>
+                           <TextField
+                              fullWidth
+                              name="phone"
+                              label="Phone Number"
+                              variant="outlined"
+                              value={formData.phone}
+                              onChange={handleChange}
+                              required
+                           />
+                        </Grid>
+                        <Grid item xs={12}>
+                           <TextField
+                              fullWidth
+                              name="address"
+                              label="Address"
+                              variant="outlined"
+                              value={formData.address}
+                              onChange={handleChange}
+                              required
+                           />
+                        </Grid>
+                        <Grid item xs={12}>
+                           <TextField
+                              fullWidth
+                              name="country"
+                              label="Country"
+                              variant="outlined"
+                              value={formData.country}
+                              onChange={handleChange}
+                              required
+                           />
+                        </Grid>
+                     </>
+                  )}
+                  <Grid item xs={12}>
+                     <TextField
+                        fullWidth
+                        name="email"
+                        label="Email"
+                        type="email"
+                        variant="outlined"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                     />
+                  </Grid>
+                  <Grid item xs={12}>
+                     <TextField
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        variant="outlined"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                     />
+                  </Grid>
+               </Grid>
+
+               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                   <Button
-                     variant="contained"
-                     color={isSignUp ? 'success' : 'inherit'}
+                     fullWidth
+                     variant="outlined"
                      onClick={() => setIsSignUp(true)}
                      sx={{
-                        flex: 1,
-                        mr: 1,
-                        backgroundColor: isSignUp ? 'green' : '#e0e0e0',
-                        color: isSignUp ? '#fff' : '#757575',
+                        borderColor: isSignUp ? 'green' : '#c8e6c9',
+                        color: isSignUp ? 'green' : '#757575',
+                        fontWeight: isSignUp ? 600 : 400,
                      }}
                   >
                      Sign Up
                   </Button>
                   <Button
-                     variant="contained"
-                     color={!isSignUp ? 'success' : 'inherit'}
+                     fullWidth
+                     variant="outlined"
                      onClick={() => setIsSignUp(false)}
                      sx={{
-                        flex: 1,
-                        ml: 1,
-                        backgroundColor: !isSignUp ? 'green' : '#e0e0e0',
-                        color: !isSignUp ? '#fff' : '#757575',
+                        borderColor: !isSignUp ? 'green' : '#c8e6c9',
+                        color: !isSignUp ? 'green' : '#757575',
+                        fontWeight: !isSignUp ? 600 : 400,
                      }}
                   >
                      Log In
                   </Button>
                </Box>
+
                <Button
                   type="submit"
                   fullWidth
@@ -139,15 +224,17 @@ const AuthPage = () => {
                      mt: 3,
                      backgroundColor: 'green',
                      color: '#fff',
+                     py: 1.2,
+                     fontWeight: 'bold',
                      '&:hover': {
-                        backgroundColor: '#004d00',
+                        backgroundColor: '#2e7d32',
                      },
                   }}
                >
                   {isSignUp ? 'Register' : 'Login'}
                </Button>
             </Box>
-         </Box>
+         </MotionBox>
       </Box>
    );
 };

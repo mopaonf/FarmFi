@@ -14,7 +14,8 @@ const authMiddleware = async (req, res, next) => {
 
    try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded; // Attach user info to the request
+      console.log('Decoded JWT in farmer authMiddleware:', decoded); // Add this line for debugging
+      req.user = { id: decoded.id }; // Attach user info to the request
 
       const farmer = await Farmer.findById(req.user.id);
       if (!farmer) {

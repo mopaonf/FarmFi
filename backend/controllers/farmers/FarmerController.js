@@ -1,4 +1,5 @@
 const Farmer = require('../../models/farmers/Farmer');
+const Wallet = require('../../models/wallets/Wallet');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -22,6 +23,14 @@ exports.signup = async (req, res) => {
          country,
       });
       await farmer.save();
+
+      // Create wallet for farmer
+      await Wallet.create({
+         userId: farmer._id,
+         userType: 'Farmer',
+         balance: 0,
+         transactions: [],
+      });
 
       // Generate token after saving
       const token = jwt.sign({ id: farmer._id }, process.env.JWT_SECRET, {
@@ -70,6 +79,7 @@ exports.login = async (req, res) => {
 // Get farmer profile
 exports.getProfile = async (req, res) => {
    try {
+      console.log('getProfile called, req.user:', req.user); // Add this line for debugging
       const farmer = await Farmer.findById(req.user.id).select('-password');
       if (!farmer) {
          return res.status(404).json({ message: 'Farmer not found' });

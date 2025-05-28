@@ -19,6 +19,8 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import axios from 'axios';
 import Modal from '@mui/material/Modal';
+import Collapse from '@mui/material/Collapse';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 const Projects = () => {
    const theme = useTheme();
@@ -98,9 +100,14 @@ const Projects = () => {
       fetchProjects();
    }, []);
 
-   // Filter projects by status
+   // Filter projects by status (case-insensitive)
    const filteredProjects = projectsData.filter(
-      (project) => project.status === selectedFilter
+      (project) =>
+         project.status &&
+         // Show both 'completed' and 'funded' projects under 'completed' filter
+         (selectedFilter.toLowerCase() === 'completed'
+            ? ['completed', 'funded'].includes(project.status.toLowerCase())
+            : project.status.toLowerCase() === selectedFilter.toLowerCase())
    );
 
    return (
@@ -191,375 +198,588 @@ const Projects = () => {
 
          {/* Add padding top when header is fixed to prevent content jump */}
          <Box sx={{ paddingTop: scrolled ? '120px' : 0 }}>
+            {filteredProjects.length === 0 && (
+               <Box
+                  sx={{
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     minHeight: '40vh',
+                     color: colors.grey[400],
+                  }}
+               >
+                  <InfoOutlinedIcon
+                     sx={{
+                        fontSize: 60,
+                        mb: 2,
+                        color: colors.greenAccent[400],
+                     }}
+                  />
+                  <Typography variant="h5" fontWeight="bold" mb={1}>
+                     No Projects Found
+                  </Typography>
+                  <Typography variant="body1" color={colors.grey[300]}>
+                     You currently have no projects in this category.
+                  </Typography>
+               </Box>
+            )}
             {filteredProjects.map((project, index) => {
                const isExpanded = expandedCards[project._id || project.id];
+               // Calculate dynamic values
+               const unitsSold =
+                  typeof project.unitsInvested === 'number'
+                     ? project.unitsInvested
+                     : project.unitsSold || 0;
+               const totalUnits =
+                  typeof project.totalUnits === 'number'
+                     ? project.totalUnits
+                     : 0;
+               const availableUnits = totalUnits - unitsSold;
+               const unitPrice =
+                  typeof project.unitPrice === 'number' ? project.unitPrice : 0;
+               const totalInvestment =
+                  typeof project.totalInvestment === 'number'
+                     ? project.totalInvestment
+                     : unitsSold * unitPrice;
+               const fundingProgress =
+                  totalUnits > 0
+                     ? Math.round((unitsSold / totalUnits) * 100)
+                     : 0;
+
                return (
                   <Card
                      key={project._id || project.id || index}
                      sx={{
-                        display: 'flex',
-                        flexDirection: { xs: 'column', md: 'row' },
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        p: 3,
-                        mb: 4, // Increased margin-bottom for more space between cards
-                        borderRadius: 2,
-                        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)', // Increased box shadow for distinction
-                        maxWidth: '1750px',
-                        // margin: '5',
-                        transition: 'box-shadow 0.3s ease',
+                        display: 'block',
+                        p: { xs: 2, md: 4 },
+                        mb: 5,
+                        borderRadius: 3,
+                        boxShadow: '0px 8px 32px rgba(0,0,0,0.10)',
+                        width: '100%',
+                        maxWidth: '100%',
+                        transition:
+                           'box-shadow 0.5s cubic-bezier(.25,.8,.25,1), color 0.5s',
+                        position: 'relative',
+                        background: `linear-gradient(90deg, ${colors.primary[400]} 0%, ${colors.greenAccent[200]} 100%)`,
+                        color: colors.grey[300],
                         '&:hover': {
-                           boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.3)', // Enhanced hover effect
+                           boxShadow:
+                              '0px 24px 48px 0px rgba(0,0,0,0.25), 0px 1.5px 8px 0px rgba(0,0,0,0.10)',
+                           color: colors.grey[300],
+                           fontWeight: 600,
+                           transition:
+                              'box-shadow 0.5s cubic-bezier(.25,.8,.25,1), color 0.5s, font-weight 0.3s',
+                           '& .MuiTypography-root': {
+                              color: `${colors.grey[300]} !important`,
+                              fontWeight: 600,
+                           },
+                           '& .project-description-box': {
+                              borderColor: colors.grey[100],
+                           },
                         },
                      }}
                   >
-                     {/* Left Section: Project Details */}
-                     <Box flex="1" pr={3}>
-                        <Typography
-                           variant="h6"
-                           fontWeight="bold"
-                           color={colors.greenAccent[600]}
-                           mb={1}
-                        >
-                           {project.title}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Category:</strong>{' '}
-                           {project.category || 'N/A'}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Location:</strong>{' '}
-                           {project.location || 'N/A'}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Land Size:</strong>{' '}
-                           {project.land_size != null
-                              ? `${project.land_size} hectares`
-                              : 'N/A'}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Budget Total:</strong> FCFA{' '}
-                           {project.budget_total != null
-                              ? Number(project.budget_total).toLocaleString()
-                              : 'N/A'}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Funding Goal:</strong> FCFA{' '}
-                           {project.funding_goal != null
-                              ? Number(project.funding_goal).toLocaleString()
-                              : 'N/A'}
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Duration:</strong>{' '}
-                           {project.duration_in_months || 'N/A'} months
-                        </Typography>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Timestamp:</strong>{' '}
-                           {project.createdAt
-                              ? new Date(project.createdAt).toLocaleString()
-                              : 'N/A'}
-                        </Typography>
-                     </Box>
-
-                     {/* Center Section: Funding Progress - Keeping exactly as original */}
-                     <Box flex="1" pr={3}>
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Funding Progress:</strong>
-                        </Typography>
-                        <LinearProgress
-                           variant="determinate"
-                           value={project.progress}
-                           sx={{
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: '#e0e0e0',
-                              '& .MuiLinearProgress-bar': {
-                                 backgroundColor: colors.greenAccent[400],
-                              },
-                           }}
-                        />
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mt={1}
-                        >
-                           {project.progress}% Funded
-                        </Typography>
-                        {/* Photos Section - Keeping exactly as original */}
-                        <Box mt={4} mb={2}>
+                     {/* Main Content */}
+                     <Box
+                        sx={{
+                           display: 'flex',
+                           flexDirection: { xs: 'column', md: 'row' },
+                           width: '100%',
+                           gap: { xs: 2, md: 4 },
+                        }}
+                     >
+                        {/* Left Section: Project Details */}
+                        <Box flex="1" pr={{ md: 3 }}>
                            <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
+                              variant="h5"
+                              fontWeight="bold"
+                              color={colors.greenAccent[400]}
                               mb={1}
+                              sx={{ letterSpacing: 1 }}
                            >
-                              <strong>Photos:</strong>
+                              {project.title}
                            </Typography>
-                           <Box display="flex" gap={1} flexWrap="wrap">
-                              {project.photos?.length > 0 ? (
-                                 project.photos.map((photo, i) => {
-                                    const url =
-                                       typeof photo === 'string'
-                                          ? photo
-                                          : photo.url;
-                                    // Only render if url is a valid HTTP(S) URL
-                                    if (url && /^https?:\/\//i.test(url)) {
-                                       return (
-                                          <Box
-                                             key={i}
-                                             sx={{
-                                                position: 'relative',
-                                                cursor: 'pointer',
-                                             }}
-                                             onClick={() => {
-                                                setSelectedImageUrl(url);
-                                                setImageModalOpen(true);
-                                             }}
-                                          >
-                                             <Box
-                                                component="img"
-                                                src={url}
-                                                alt={`Project Photo ${i + 1}`}
-                                                sx={{
-                                                   width: '80px',
-                                                   height: '80px',
-                                                   borderRadius: '8px',
-                                                   objectFit: 'cover',
-                                                   boxShadow:
-                                                      '0px 2px 5px rgba(0, 0, 0, 0.1)',
-                                                }}
-                                             />
-                                          </Box>
-                                       );
-                                    }
-                                    // Otherwise, skip rendering or show a placeholder
-                                    return null;
-                                 })
-                              ) : (
-                                 <Typography
-                                    variant="body2"
-                                    color={colors.grey[500]}
+                           <Typography
+                              variant="subtitle2"
+                              color={colors.grey[200]}
+                              mb={2}
+                              sx={{ fontStyle: 'italic' }}
+                           >
+                              {project.category || 'Uncategorized'} &mdash;{' '}
+                              {project.location || 'Location N/A'}
+                           </Typography>
+                           <Box mb={1}>
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[300]}
+                              >
+                                 <strong>Land Size:</strong>{' '}
+                                 <span
+                                    style={{ color: colors.greenAccent[300] }}
                                  >
-                                    No photos available
+                                    {project.land_size != null
+                                       ? `${project.land_size} hectares`
+                                       : 'N/A'}
+                                 </span>
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[300]}
+                              >
+                                 <strong>Budget:</strong>{' '}
+                                 <span
+                                    style={{ color: colors.greenAccent[300] }}
+                                 >
+                                    FCFA{' '}
+                                    {project.budget_total != null
+                                       ? Number(
+                                            project.budget_total
+                                         ).toLocaleString()
+                                       : 'N/A'}
+                                 </span>
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[300]}
+                              >
+                                 <strong>Funding Goal:</strong>{' '}
+                                 <span
+                                    style={{ color: colors.greenAccent[300] }}
+                                 >
+                                    FCFA{' '}
+                                    {project.funding_goal != null
+                                       ? Number(
+                                            project.funding_goal
+                                         ).toLocaleString()
+                                       : 'N/A'}
+                                 </span>
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[300]}
+                              >
+                                 <strong>Duration:</strong>{' '}
+                                 <span
+                                    style={{ color: colors.greenAccent[300] }}
+                                 >
+                                    {project.duration_in_months || 'N/A'} months
+                                 </span>
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[300]}
+                              >
+                                 <strong>Created:</strong>{' '}
+                                 <span
+                                    style={{ color: colors.greenAccent[300] }}
+                                 >
+                                    {project.createdAt
+                                       ? new Date(
+                                            project.createdAt
+                                         ).toLocaleString()
+                                       : 'N/A'}
+                                 </span>
+                              </Typography>
+                           </Box>
+                           <Divider
+                              sx={{
+                                 my: 1,
+                                 background: colors.greenAccent[700],
+                              }}
+                           />
+                           <Box display="flex" gap={3} flexWrap="wrap" mt={1}>
+                              <Box>
+                                 <Typography
+                                    variant="caption"
+                                    color={colors.grey[200]}
+                                 >
+                                    Units Sold
                                  </Typography>
-                              )}
+                                 <Typography
+                                    variant="h6"
+                                    color={colors.greenAccent[400]}
+                                    fontWeight="bold"
+                                 >
+                                    {unitsSold}
+                                 </Typography>
+                              </Box>
+                              <Box>
+                                 <Typography
+                                    variant="caption"
+                                    color={colors.grey[200]}
+                                 >
+                                    Available Units
+                                 </Typography>
+                                 <Typography
+                                    variant="h6"
+                                    color={colors.greenAccent[400]}
+                                    fontWeight="bold"
+                                 >
+                                    {availableUnits}
+                                 </Typography>
+                              </Box>
+                              <Box>
+                                 <Typography
+                                    variant="caption"
+                                    color={colors.grey[200]}
+                                 >
+                                    Raised
+                                 </Typography>
+                                 <Typography
+                                    variant="h6"
+                                    color={colors.greenAccent[400]}
+                                    fontWeight="bold"
+                                 >
+                                    FCFA{' '}
+                                    {Number(totalInvestment).toLocaleString()}
+                                 </Typography>
+                              </Box>
+                           </Box>
+                        </Box>
+                        {/* Center Section: Funding Progress */}
+                        <Box
+                           flex="1"
+                           pr={{ md: 3 }}
+                           sx={{
+                              backgroundColor: 'transparent',
+                              p: 2,
+                           }}
+                        >
+                           <Typography
+                              variant="subtitle2"
+                              color={colors.grey[200]}
+                              mb={1}
+                              fontWeight="bold"
+                              sx={{ letterSpacing: 0.5 }}
+                           >
+                              Funding Progress
+                           </Typography>
+                           <LinearProgress
+                              variant="determinate"
+                              value={fundingProgress}
+                              sx={{
+                                 height: 12,
+                                 borderRadius: 6,
+                                 backgroundColor: 'transparent',
+                                 '& .MuiLinearProgress-bar': {
+                                    backgroundColor: colors.greenAccent[400],
+                                 },
+                                 border: `1px solid ${colors.grey[100]}`,
+                              }}
+                           />
+                           <Typography
+                              variant="h6"
+                              color={colors.greenAccent[400]}
+                              mt={1}
+                              fontWeight="bold"
+                           >
+                              {fundingProgress}% Funded
+                           </Typography>
+                           {/* Photos Section */}
+                           <Box mt={4} mb={2}>
+                              <Typography
+                                 variant="subtitle2"
+                                 color={colors.grey[200]}
+                                 mb={1}
+                                 fontWeight="bold"
+                              >
+                                 Project Gallery
+                              </Typography>
+                              <Box display="flex" gap={1} flexWrap="wrap">
+                                 {project.photos?.length > 0 ? (
+                                    project.photos.map((photo, i) => {
+                                       const url =
+                                          typeof photo === 'string'
+                                             ? photo
+                                             : photo.url;
+                                       if (url && /^https?:\/\//i.test(url)) {
+                                          return (
+                                             <Box
+                                                key={i}
+                                                sx={{
+                                                   position: 'relative',
+                                                   cursor: 'pointer',
+                                                   border: `2px solid ${colors.greenAccent[400]}`,
+                                                   borderRadius: '10px',
+                                                   overflow: 'hidden',
+                                                   transition: 'transform 0.2s',
+                                                   '&:hover': {
+                                                      transform: 'scale(1.07)',
+                                                      boxShadow: `0 0 12px ${colors.greenAccent[400]}`,
+                                                   },
+                                                }}
+                                                onClick={() => {
+                                                   setSelectedImageUrl(url);
+                                                   setImageModalOpen(true);
+                                                }}
+                                             >
+                                                <Box
+                                                   component="img"
+                                                   src={url}
+                                                   alt={`Project Photo ${
+                                                      i + 1
+                                                   }`}
+                                                   sx={{
+                                                      width: '80px',
+                                                      height: '80px',
+                                                      objectFit: 'cover',
+                                                   }}
+                                                />
+                                             </Box>
+                                          );
+                                       }
+                                       return null;
+                                    })
+                                 ) : (
+                                    <Typography
+                                       variant="body2"
+                                       color={colors.grey[500]}
+                                    >
+                                       No photos available
+                                    </Typography>
+                                 )}
+                              </Box>
+                           </Box>
+                        </Box>
+                        {/* Right Section: Description */}
+                        <Box flex="1">
+                           <Typography
+                              variant="subtitle2"
+                              color={colors.grey[200]}
+                              mb={1}
+                              fontWeight="bold"
+                           >
+                              Project Description
+                           </Typography>
+                           <Box
+                              className="project-description-box"
+                              sx={{
+                                 backgroundColor: 'transparent',
+                                 padding: 2,
+                                 borderRadius: '10px',
+                                 minHeight: '100px',
+                                 maxHeight: '180px',
+                                 overflowY: 'auto',
+                                 border: `1px solid ${colors.grey[100]}`,
+                                 boxShadow: 'none',
+                                 transition: 'border-color 0.3s',
+                              }}
+                           >
+                              <Typography
+                                 variant="body2"
+                                 color={colors.grey[100]}
+                                 sx={{
+                                    color: `${colors.grey[100]} !important`,
+                                 }}
+                              >
+                                 {project.description ||
+                                    'No description available for this project.'}
+                              </Typography>
                            </Box>
                         </Box>
                      </Box>
-
-                     {/* Right Section: Description */}
-                     <Box flex="1">
-                        <Typography
-                           variant="body2"
-                           color={colors.grey[700]}
-                           mb={1}
-                        >
-                           <strong>Description:</strong>
-                        </Typography>
+                     {/* Expanded Details - Collapse for smooth transition */}
+                     <Collapse
+                        in={isExpanded}
+                        timeout="auto"
+                        unmountOnExit
+                        sx={{
+                           backgroundColor: 'transparent',
+                        }}
+                     >
                         <Box
-                           sx={{
-                              backgroundColor: colors.primary[100],
-                              padding: 2,
-                              borderRadius: '8px',
-                              maxHeight: '150px',
-                              overflowY: 'auto',
-                              boxShadow: 'inset 0px 2px 5px rgba(0, 0, 0, 0.1)',
-                           }}
+                           mt={3}
+                           p={2}
+                           bgcolor="transparent"
+                           borderRadius={2}
                         >
-                           <Typography variant="body2" color={colors.grey[700]}>
-                              {project.description ||
-                                 'No description available.'}
+                           <Divider
+                              sx={{
+                                 mb: 2,
+                                 backgroundColor: colors.greenAccent[700],
+                              }}
+                           />
+                           <Typography
+                              variant="h6"
+                              color={colors.greenAccent[400]}
+                              fontWeight="bold"
+                              mb={2}
+                           >
+                              Additional Project Details
                            </Typography>
+                           <Box
+                              display="grid"
+                              gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }}
+                              gap={2}
+                           >
+                              {/* Use gray for all info text */}
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Investment per Unit:</strong> FCFA{' '}
+                                 {project.unitPrice != null
+                                    ? Number(project.unitPrice).toLocaleString()
+                                    : 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Total Units:</strong>{' '}
+                                 {project.totalUnits}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Expected ROI Range:</strong>{' '}
+                                 {project.expected_roi_range || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Return Frequency:</strong>{' '}
+                                 {project.return_frequency || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Return Start:</strong>{' '}
+                                 {project.return_start_year_or_month || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Contract Duration:</strong>{' '}
+                                 {project.contract_duration || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Annual Net Profit Estimate:</strong>{' '}
+                                 {project.annual_net_profit_estimate || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Risks & Mitigation:</strong>{' '}
+                                 {project.risks_and_mitigation || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Pitch Video:</strong>{' '}
+                                 {project.pitch_video?.url ? (
+                                    <a
+                                       href={project.pitch_video.url}
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       style={{
+                                          color: colors.greenAccent[400],
+                                          textDecoration: 'underline',
+                                       }}
+                                    >
+                                       {project.pitch_video.name ||
+                                          'View Video'}
+                                    </a>
+                                 ) : (
+                                    'N/A'
+                                 )}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Farmer Bio:</strong>{' '}
+                                 {project.farmer_bio || 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Start Date:</strong>{' '}
+                                 {project.start_date
+                                    ? new Date(
+                                         project.start_date
+                                      ).toLocaleDateString()
+                                    : 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>End Date:</strong>{' '}
+                                 {project.end_date
+                                    ? new Date(
+                                         project.end_date
+                                      ).toLocaleDateString()
+                                    : 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Created At:</strong>{' '}
+                                 {project.createdAt
+                                    ? new Date(
+                                         project.createdAt
+                                      ).toLocaleString()
+                                    : 'N/A'}
+                              </Typography>
+                              <Typography
+                                 variant="body2"
+                                 sx={{ color: colors.grey[300] }}
+                              >
+                                 <strong>Updated At:</strong>{' '}
+                                 {project.updatedAt
+                                    ? new Date(
+                                         project.updatedAt
+                                      ).toLocaleString()
+                                    : 'N/A'}
+                              </Typography>
+                           </Box>
                         </Box>
-                     </Box>
-
-                     {/* Show More/Less Button */}
-                     <Box mt={2}>
+                     </Collapse>
+                     {/* Show More/Less Button - Absolutely at the bottom center */}
+                     <Box
+                        sx={{
+                           width: '100%',
+                           display: 'flex',
+                           justifyContent: 'center',
+                           mt: 3,
+                        }}
+                     >
                         <Button
-                           size="small"
-                           variant="outlined"
+                           size="medium"
+                           variant={isExpanded ? 'contained' : 'outlined'}
+                           color="success"
+                           sx={{
+                              fontWeight: 'bold',
+                              letterSpacing: 1,
+                              px: 4,
+                              py: 1.5,
+                              borderRadius: 2,
+                              boxShadow: isExpanded
+                                 ? `0 2px 12px ${colors.greenAccent[400]}44`
+                                 : 'none',
+                              transition: 'all 0.2s',
+                           }}
                            onClick={(e) => {
                               e.stopPropagation();
                               handleShowMoreToggle(project._id || project.id);
                            }}
                         >
-                           {isExpanded ? 'Show Less' : 'Show More'}
+                           {isExpanded ? 'Hide Details' : 'Show More'}
                         </Button>
                      </Box>
-
-                     {/* Expanded Details */}
-                     {isExpanded && (
-                        <Box mt={2}>
-                           <Divider
-                              sx={{ mb: 2, backgroundColor: colors.grey[300] }}
-                           />
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Investment per Unit:</strong> FCFA{' '}
-                              {project.unitPrice != null
-                                 ? Number(project.unitPrice).toLocaleString()
-                                 : 'N/A'}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Total Units:</strong> {project.totalUnits}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Expected ROI Range:</strong>{' '}
-                              {project.expected_roi_range}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Return Frequency:</strong>{' '}
-                              {project.return_frequency}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Return Start Year:</strong>{' '}
-                              {project.return_start_year_or_month}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Contract Duration:</strong>{' '}
-                              {project.contract_duration}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Annual Net Profit Estimate:</strong>{' '}
-                              {project.annual_net_profit_estimate}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Risks & Mitigation:</strong>{' '}
-                              {project.risks_and_mitigation}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Pitch Video:</strong>{' '}
-                              {project.pitch_video?.url ? (
-                                 <a
-                                    href={project.pitch_video.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                 >
-                                    {project.pitch_video.name || 'View Video'}
-                                 </a>
-                              ) : (
-                                 'N/A'
-                              )}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Farmer Bio:</strong> {project.farmer_bio}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Start Date:</strong>{' '}
-                              {project.start_date
-                                 ? new Date(
-                                      project.start_date
-                                   ).toLocaleDateString()
-                                 : 'N/A'}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>End Date:</strong>{' '}
-                              {project.end_date
-                                 ? new Date(
-                                      project.end_date
-                                   ).toLocaleDateString()
-                                 : 'N/A'}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Created At:</strong>{' '}
-                              {project.createdAt
-                                 ? new Date(project.createdAt).toLocaleString()
-                                 : 'N/A'}
-                           </Typography>
-                           <Typography
-                              variant="body2"
-                              color={colors.grey[700]}
-                              mb={1}
-                           >
-                              <strong>Updated At:</strong>{' '}
-                              {project.updatedAt
-                                 ? new Date(project.updatedAt).toLocaleString()
-                                 : 'N/A'}
-                           </Typography>
-                        </Box>
-                     )}
                   </Card>
                );
             })}

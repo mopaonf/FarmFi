@@ -12,6 +12,7 @@ const {
 } = require('../../controllers/farmers/FarmerController');
 const authMiddleware = require('../../middleware/farmers/authMiddleware');
 const adminAuth = require('../../middleware/admins/authMiddleware');
+const Project = require('../../models/projects/Project'); // Import Project model
 
 const router = express.Router();
 
@@ -19,13 +20,7 @@ const router = express.Router();
 router.post('/signup', signup);
 router.post('/login', login);
 
-// Admin routes (must come before protected routes)
-router.get('/', adminAuth, getAllFarmers);
-router.get('/:id', adminAuth, getFarmerById);
-router.delete('/:id', adminAuth, deleteFarmer);
-router.put('/:id', adminAuth, updateFarmerByAdmin);
-
-// Protected farmer routes
+// Protected farmer routes (must come before admin catch-all)
 router.get('/profile', authMiddleware, getProfile);
 router.put('/profile', authMiddleware, updateProfile);
 router.delete('/profile', authMiddleware, deleteProfile);
@@ -39,5 +34,11 @@ router.get('/projects', authMiddleware, async (req, res) => {
       res.status(500).json({ message: error.message });
    }
 });
+
+// Admin routes (catch-all must come last)
+router.get('/', adminAuth, getAllFarmers);
+router.get('/:id', adminAuth, getFarmerById);
+router.delete('/:id', adminAuth, deleteFarmer);
+router.put('/:id', adminAuth, updateFarmerByAdmin);
 
 module.exports = router;
