@@ -2,6 +2,8 @@ const express = require('express');
 const {
    getAllTransactions,
    getTransactionDetails,
+   approveWithdrawal,
+   declineWithdrawal,
 } = require('../../controllers/transactions/TransactionController');
 const auth = require('../../middleware/auth');
 const { isAdmin } = require('../../middleware/roleCheck');
@@ -15,5 +17,9 @@ router.get(
    isAdmin,
    getTransactionDetails
 );
+
+// Admin: Approve/Decline withdrawal endpoints
+router.post('/:transactionId/approve-withdrawal', isAdmin, approveWithdrawal);
+router.post('/:transactionId/decline-withdrawal', isAdmin, declineWithdrawal);
 
 module.exports = router;

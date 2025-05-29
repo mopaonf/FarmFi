@@ -23,12 +23,18 @@ exports.getWallet = async (req, res) => {
 };
 
 exports.depositFunds = async (req, res) => {
-   let { amount, description } = req.body;
-   const userId = req.user.id;
+   let { amount, description, userId } = req.body;
+   userId =
+      userId ||
+      (req.user && (req.user.id || req.user._id || req.user.userId)) ||
+      req.userId ||
+      (req.query && req.query.userId);
 
-   // Ensure amount is a number
    amount = Number(amount);
 
+   if (!userId) {
+      return res.status(400).json({ message: 'User ID not found in request' });
+   }
    if (isNaN(amount) || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
    }
@@ -165,19 +171,35 @@ exports.adminCreditWallet = async (req, res) => {
 };
 
 exports.withdrawFunds = async (req, res) => {
-   const { amount, description } = req.body;
-   const userId = req.user.id;
+   let { amount, description, userId } = req.body;
+   userId =
+      userId ||
+      (req.user && (req.user.id || req.user._id || req.user.userId)) ||
+      req.userId ||
+      (req.query && req.query.userId);
+
+   const amt = Number(amount);
+
+   if (!userId) {
+      return res.status(400).json({ message: 'User ID not found in request' });
+   }
+   if (isNaN(amt) || amt <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
+   }
 
    try {
       const wallet = await Wallet.findOne({ userId });
-      if (!wallet || wallet.balance < amount) {
+      if (!wallet) {
+         return res.status(404).json({ message: 'Wallet not found' });
+      }
+      if (wallet.balance < amt) {
          return res.status(400).json({ message: 'Insufficient balance' });
       }
 
-      wallet.balance -= amount;
+      wallet.balance -= amt;
       wallet.transactions.push({
          type: 'withdrawal',
-         amount,
+         amount: amt,
          status: 'pending',
          description,
          reference: generateTransactionRef(),

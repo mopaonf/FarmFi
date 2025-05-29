@@ -27,6 +27,8 @@ import {
 import { tokens } from '../../theme';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import { format } from 'date-fns';
 
 const formatDate = (dateString) => {
@@ -69,6 +71,8 @@ const TransactionPage = () => {
    const [error, setError] = useState(null);
    const [selectedTransaction, setSelectedTransaction] = useState(null);
    const [detailsModal, setDetailsModal] = useState(false);
+   const [actionLoading, setActionLoading] = useState(false);
+   const [actionError, setActionError] = useState(null);
 
    useEffect(() => {
       fetchTransactions();
@@ -102,6 +106,53 @@ const TransactionPage = () => {
    const handleViewDetails = (transaction) => {
       setSelectedTransaction(transaction);
       setDetailsModal(true);
+   };
+
+   // Admin action handlers
+   const handleApproveWithdraw = async (transaction) => {
+      setActionLoading(true);
+      setActionError(null);
+      try {
+         const token = localStorage.getItem('adminToken');
+         await fetch(
+            `http://localhost:5000/api/transactions/${transaction._id}/approve-withdrawal`,
+            {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+         setDetailsModal(false);
+         fetchTransactions();
+      } catch (err) {
+         setActionError('Failed to approve withdrawal.');
+      }
+      setActionLoading(false);
+   };
+
+   const handleDeclineWithdraw = async (transaction) => {
+      setActionLoading(true);
+      setActionError(null);
+      try {
+         const token = localStorage.getItem('adminToken');
+         await fetch(
+            `http://localhost:5000/api/transactions/${transaction._id}/decline-withdrawal`,
+            {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+         setDetailsModal(false);
+         fetchTransactions();
+      } catch (err) {
+         setActionError('Failed to decline withdrawal.');
+      }
+      setActionLoading(false);
    };
 
    // Filter transactions based on search query and selected filter
@@ -227,55 +278,107 @@ const TransactionPage = () => {
                   </TableRow>
                </TableHead>
                <TableBody>
-                  {filteredTransactions.map((transaction) => (
-                     <TableRow key={transaction._id}>
-                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.reference}
-                        </TableCell>
-                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.type === 'disbursement'
-                              ? 'Admin'
-                              : transaction?.user?.name || 'Unknown User'}
-                           {transaction.type !== 'disbursement' && transaction?.user?.email && (
+                  {filteredTransactions.map((transaction) => {
+                     // User/farmer/admin name logic
+                     let displayName = 'Unknown User';
+                     let displayEmail = '';
+                     // Investor or Farmer (populated user or userId)
+                     if (transaction?.user?.name) {
+                        displayName = transaction.user.name;
+                        displayEmail = transaction.user.email || '';
+                     } else if (
+                        transaction?.userId &&
+                        typeof transaction.userId === 'object' &&
+                        transaction.userId.name
+                     ) {
+                        displayName = transaction.userId.name;
+                        displayEmail = transaction.userId.email || '';
+                     } else if (
+                        transaction?.farmer &&
+                        typeof transaction.farmer === 'object' &&
+                        transaction.farmer.name
+                     ) {
+                        // Farmer disbursement (if backend populates farmer)
+                        displayName = transaction.farmer.name;
+                        displayEmail = transaction.farmer.email || '';
+                     } else if (
+                        transaction?.admin &&
+                        typeof transaction.admin === 'object' &&
+                        transaction.admin.name
+                     ) {
+                        // Admin transaction (if backend populates admin)
+                        displayName = transaction.admin.name + ' (Admin)';
+                        displayEmail = transaction.admin.email || '';
+                     } else if (transaction.type === 'disbursement') {
+                        displayName = 'Admin';
+                     }
+                     // fallback to userId string if nothing else
+                     if (
+                        displayName === 'Unknown User' &&
+                        transaction?.userId &&
+                        typeof transaction.userId === 'string'
+                     ) {
+                        displayName = transaction.userId;
+                     }
+
+                     return (
+                        <TableRow key={transaction._id}>
+                           <TableCell
+                              sx={{ color: colors.grey?.[300] || '#ccc' }}
+                           >
+                              {transaction.reference}
+                           </TableCell>
+                           <TableCell
+                              sx={{ color: colors.grey?.[300] || '#ccc' }}
+                           >
+                              {displayName}
+                              {displayEmail && (
+                                 <Typography
+                                    variant="caption"
+                                    display="block"
+                                    color={colors.grey?.[400]}
+                                 >
+                                    {displayEmail}
+                                 </Typography>
+                              )}
+                           </TableCell>
+                           <TableCell
+                              sx={{ color: colors.grey?.[300] || '#ccc' }}
+                           >
+                              {transaction.type}
+                           </TableCell>
+                           <TableCell
+                              sx={{ color: colors.grey?.[300] || '#ccc' }}
+                           >
+                              {transaction.amount.toLocaleString()}
+                           </TableCell>
+                           <TableCell>
                               <Typography
-                                 variant="caption"
-                                 display="block"
-                                 color={colors.grey?.[400]}
+                                 color={getStatusColor(transaction?.status)}
+                                 sx={{ textTransform: 'capitalize' }}
                               >
-                                 {transaction.user.email}
+                                 {transaction?.status || 'Unknown'}
                               </Typography>
-                           )}
-                        </TableCell>
-                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.type}
-                        </TableCell>
-                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {transaction.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                           <Typography
-                              color={getStatusColor(transaction?.status)}
-                              sx={{ textTransform: 'capitalize' }}
+                           </TableCell>
+                           <TableCell
+                              sx={{ color: colors.grey?.[300] || '#ccc' }}
                            >
-                              {transaction?.status || 'Unknown'}
-                           </Typography>
-                        </TableCell>
-                        <TableCell sx={{ color: colors.grey?.[300] || '#ccc' }}>
-                           {formatDate(transaction.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                           <IconButton
-                              onClick={() => handleViewDetails(transaction)}
-                           >
-                              <Tooltip title="View Details">
-                                 <VisibilityIcon
-                                    sx={{ color: colors.blueAccent[400] }}
-                                 />
-                              </Tooltip>
-                           </IconButton>
-                        </TableCell>
-                     </TableRow>
-                  ))}
+                              {formatDate(transaction.createdAt)}
+                           </TableCell>
+                           <TableCell>
+                              <IconButton
+                                 onClick={() => handleViewDetails(transaction)}
+                              >
+                                 <Tooltip title="View Details">
+                                    <VisibilityIcon
+                                       sx={{ color: colors.blueAccent[400] }}
+                                    />
+                                 </Tooltip>
+                              </IconButton>
+                           </TableCell>
+                        </TableRow>
+                     );
+                  })}
                </TableBody>
             </Table>
          </TableContainer>
@@ -374,7 +477,8 @@ const TransactionPage = () => {
                         </Grid>
 
                         {/* Related Investment or Project for disbursement */}
-                        {selectedTransaction.type === 'investment' && selectedTransaction.investment ? (
+                        {selectedTransaction.type === 'investment' &&
+                        selectedTransaction.investment ? (
                            <Grid item xs={12}>
                               <Typography variant="h6" color={colors.grey[100]}>
                                  Related Investment
@@ -393,7 +497,8 @@ const TransactionPage = () => {
                                           Project:
                                        </Typography>
                                        <Typography color={colors.grey[100]}>
-                                          {selectedTransaction.investment.project?.title || 'N/A'}
+                                          {selectedTransaction.investment
+                                             .project?.title || 'N/A'}
                                        </Typography>
                                     </Grid>
                                     <Grid item xs={6}>
@@ -401,7 +506,8 @@ const TransactionPage = () => {
                                           Units:
                                        </Typography>
                                        <Typography color={colors.grey[100]}>
-                                          {selectedTransaction.investment.units ?? 'N/A'}
+                                          {selectedTransaction.investment
+                                             .units ?? 'N/A'}
                                        </Typography>
                                     </Grid>
                                     <Grid item xs={6}>
@@ -409,7 +515,9 @@ const TransactionPage = () => {
                                           Investment Amount:
                                        </Typography>
                                        <Typography color={colors.grey[100]}>
-                                          {selectedTransaction.investment.amount?.toLocaleString() || 'N/A'} FCFA
+                                          {selectedTransaction.investment.amount?.toLocaleString() ||
+                                             'N/A'}{' '}
+                                          FCFA
                                        </Typography>
                                     </Grid>
                                     <Grid item xs={6}>
@@ -417,15 +525,21 @@ const TransactionPage = () => {
                                           Investment Status:
                                        </Typography>
                                        <Typography
-                                          color={getStatusColor(selectedTransaction.investment.status)}
+                                          color={getStatusColor(
+                                             selectedTransaction.investment
+                                                .status
+                                          )}
                                        >
-                                          {selectedTransaction.investment.status || 'N/A'}
+                                          {selectedTransaction.investment
+                                             .status || 'N/A'}
                                        </Typography>
                                     </Grid>
                                  </Grid>
                               </Box>
                            </Grid>
-                        ) : selectedTransaction.type === 'disbursement' && selectedTransaction.project ? (
+                        ) : selectedTransaction.type === 'disbursement' &&
+                          (selectedTransaction.disbursementProject ||
+                             selectedTransaction.project) ? (
                            <Grid item xs={12}>
                               <Typography variant="h6" color={colors.grey[100]}>
                                  Related Project
@@ -444,13 +558,93 @@ const TransactionPage = () => {
                                           Project:
                                        </Typography>
                                        <Typography color={colors.grey[100]}>
-                                          {selectedTransaction.project.title || 'N/A'}
+                                          {selectedTransaction
+                                             .disbursementProject?.title ||
+                                             selectedTransaction.project
+                                                ?.title ||
+                                             'N/A'}
                                        </Typography>
                                     </Grid>
+                                    {selectedTransaction.disbursementProject
+                                       ?.description && (
+                                       <Grid item xs={12}>
+                                          <Typography color={colors.grey[300]}>
+                                             Description:
+                                          </Typography>
+                                          <Typography color={colors.grey[100]}>
+                                             {
+                                                selectedTransaction
+                                                   .disbursementProject
+                                                   .description
+                                             }
+                                          </Typography>
+                                       </Grid>
+                                    )}
+                                    {selectedTransaction.disbursementProject
+                                       ?.unitPrice && (
+                                       <Grid item xs={12}>
+                                          <Typography color={colors.grey[300]}>
+                                             Unit Price:
+                                          </Typography>
+                                          <Typography color={colors.grey[100]}>
+                                             {selectedTransaction.disbursementProject.unitPrice.toLocaleString()}{' '}
+                                             FCFA
+                                          </Typography>
+                                       </Grid>
+                                    )}
                                  </Grid>
                               </Box>
                            </Grid>
                         ) : null}
+
+                        {/* Admin actions for pending withdrawal */}
+                        {selectedTransaction.type === 'withdrawal' &&
+                           selectedTransaction.status === 'pending' && (
+                              <Grid item xs={12} mt={2}>
+                                 <Box
+                                    display="flex"
+                                    justifyContent="flex-end"
+                                    alignItems="center"
+                                    gap={2}
+                                 >
+                                    <Button
+                                       variant="contained"
+                                       color="success"
+                                       startIcon={<CheckIcon />}
+                                       disabled={actionLoading}
+                                       onClick={() =>
+                                          handleApproveWithdraw(
+                                             selectedTransaction
+                                          )
+                                       }
+                                    >
+                                       {actionLoading
+                                          ? 'Processing...'
+                                          : 'Approve'}
+                                    </Button>
+                                    <Button
+                                       variant="contained"
+                                       color="error"
+                                       startIcon={<CloseIcon />}
+                                       disabled={actionLoading}
+                                       onClick={() =>
+                                          handleDeclineWithdraw(
+                                             selectedTransaction
+                                          )
+                                       }
+                                    >
+                                       {actionLoading
+                                          ? 'Processing...'
+                                          : 'Decline'}
+                                    </Button>
+                                    {actionError && (
+                                       <Typography color="error" ml={2}>
+                                          {actionError}
+                                       </Typography>
+                                    )}
+                                 </Box>
+                              </Grid>
+                           )}
                      </Grid>
                   </DialogContent>
                   <DialogActions sx={{ bgcolor: colors.primary[400] }}>

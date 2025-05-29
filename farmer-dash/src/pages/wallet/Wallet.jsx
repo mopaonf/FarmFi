@@ -13,6 +13,15 @@ import {
    Button,
    Avatar,
    Divider,
+   Dialog,
+   DialogTitle,
+   DialogContent,
+   DialogActions,
+   TextField,
+   IconButton,
+   InputAdornment,
+   Snackbar,
+   Alert,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -24,18 +33,21 @@ import {
    Schedule,
    Error,
    Receipt,
+   Add,
+   Remove,
+   Close,
 } from '@mui/icons-material';
 import axios from 'axios';
 
 // Professional color scheme
 const colors = {
-   primary: '#1565C0',      // Professional blue
-   secondary: '#37474F',    // Dark grey
-   success: '#2E7D32',      // Professional green
-   warning: '#F57C00',      // Professional orange
-   error: '#C62828',        // Professional red
-   background: '#F8F9FA',   // Light grey background
-   surface: '#FFFFFF',      // White surface
+   primary: '#1565C0', // Professional blue
+   secondary: '#37474F', // Dark grey
+   success: '#2E7D32', // Professional green
+   warning: '#F57C00', // Professional orange
+   error: '#C62828', // Professional red
+   background: '#F8F9FA', // Light grey background
+   surface: '#FFFFFF', // White surface
    text: {
       primary: '#212121',
       secondary: '#616161',
@@ -45,10 +57,14 @@ const colors = {
 
 const getStatusColor = (status) => {
    switch (status) {
-      case 'confirmed': return colors.success;
-      case 'pending': return colors.warning;
-      case 'failed': return colors.error;
-      default: return colors.text.disabled;
+      case 'confirmed':
+         return colors.success;
+      case 'pending':
+         return colors.warning;
+      case 'failed':
+         return colors.error;
+      default:
+         return colors.text.disabled;
    }
 };
 
@@ -63,17 +79,26 @@ const getTransactionIcon = (type) => {
       case 'investment':
          return <TrendingDown {...iconProps} sx={{ color: colors.error }} />;
       default:
-         return <Receipt {...iconProps} sx={{ color: colors.text.secondary }} />;
+         return (
+            <Receipt {...iconProps} sx={{ color: colors.text.secondary }} />
+         );
    }
 };
 
 const StatCard = ({ title, value, icon, color = colors.primary }) => (
    <Card elevation={2} sx={{ height: '100%' }}>
       <CardContent sx={{ textAlign: 'center', py: 3 }}>
-         <Avatar sx={{ bgcolor: color, mx: 'auto', mb: 2, width: 56, height: 56 }}>
+         <Avatar
+            sx={{ bgcolor: color, mx: 'auto', mb: 2, width: 56, height: 56 }}
+         >
             {icon}
          </Avatar>
-         <Typography variant="h5" fontWeight="600" color={colors.text.primary} gutterBottom>
+         <Typography
+            variant="h5"
+            fontWeight="600"
+            color={colors.text.primary}
+            gutterBottom
+         >
             FCFA {value?.toLocaleString() || '0'}
          </Typography>
          <Typography variant="body2" color={colors.text.secondary}>
@@ -84,22 +109,29 @@ const StatCard = ({ title, value, icon, color = colors.primary }) => (
 );
 
 const TransactionItem = ({ transaction }) => {
-   const isPositive = ['deposit', 'payout', 'disbursement'].includes(transaction.type);
-   const amount = `${isPositive ? '+' : '-'}FCFA ${transaction.amount?.toLocaleString() || '0'}`;
-   
+   const isPositive = ['deposit', 'payout', 'disbursement'].includes(
+      transaction.type
+   );
+   const amount = `${isPositive ? '+' : '-'}FCFA ${
+      transaction.amount?.toLocaleString() || '0'
+   }`;
+
    return (
       <ListItem divider sx={{ py: 2 }}>
-         <Box sx={{ mr: 2 }}>
-            {getTransactionIcon(transaction.type)}
-         </Box>
+         <Box sx={{ mr: 2 }}>{getTransactionIcon(transaction.type)}</Box>
          <ListItemText
             primary={
-               <Box display="flex" justifyContent="space-between" alignItems="center">
+               <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+               >
                   <Typography variant="body1" fontWeight="500">
-                     {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                     {transaction.type.charAt(0).toUpperCase() +
+                        transaction.type.slice(1)}
                   </Typography>
-                  <Typography 
-                     variant="body1" 
+                  <Typography
+                     variant="body1"
                      fontWeight="600"
                      color={isPositive ? colors.success : colors.error}
                   >
@@ -108,7 +140,12 @@ const TransactionItem = ({ transaction }) => {
                </Box>
             }
             secondary={
-               <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
+               <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mt={1}
+               >
                   <Typography variant="body2" color={colors.text.secondary}>
                      {transaction.description || 'No description'}
                   </Typography>
@@ -117,8 +154,13 @@ const TransactionItem = ({ transaction }) => {
                         label={transaction.status}
                         size="small"
                         icon={
-                           transaction.status === 'confirmed' ? <CheckCircle /> :
-                           transaction.status === 'pending' ? <Schedule /> : <Error />
+                           transaction.status === 'confirmed' ? (
+                              <CheckCircle />
+                           ) : transaction.status === 'pending' ? (
+                              <Schedule />
+                           ) : (
+                              <Error />
+                           )
                         }
                         sx={{
                            bgcolor: getStatusColor(transaction.status),
@@ -128,9 +170,11 @@ const TransactionItem = ({ transaction }) => {
                         }}
                      />
                      <Typography variant="caption" color={colors.text.disabled}>
-                        {transaction.timestamp ? 
-                           new Date(transaction.timestamp).toLocaleDateString() : ''
-                        }
+                        {transaction.timestamp
+                           ? new Date(
+                                transaction.timestamp
+                             ).toLocaleDateString()
+                           : ''}
                      </Typography>
                   </Box>
                </Box>
@@ -143,13 +187,25 @@ const TransactionItem = ({ transaction }) => {
 const Wallet = () => {
    const [wallet, setWallet] = useState(null);
    const [loading, setLoading] = useState(true);
+   const [projectNames, setProjectNames] = useState({});
+   const [depositOpen, setDepositOpen] = useState(false);
+   const [withdrawOpen, setWithdrawOpen] = useState(false);
+   const [amount, setAmount] = useState('');
+   const [desc, setDesc] = useState('');
+   const [actionLoading, setActionLoading] = useState(false);
+   const [snackbar, setSnackbar] = useState({
+      open: false,
+      message: '',
+      severity: 'success',
+   });
 
+   // Fetch wallet and project names
    useEffect(() => {
       const fetchWallet = async () => {
          try {
             const token = localStorage.getItem('token');
             let userId = localStorage.getItem('userId');
-            
+
             if (!userId && token) {
                try {
                   const payload = JSON.parse(atob(token.split('.')[1]));
@@ -167,7 +223,7 @@ const Wallet = () => {
             const response = await axios.get(url, {
                headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
-            
+
             setWallet(response.data);
          } catch (error) {
             console.error('Failed to fetch wallet:', error);
@@ -180,9 +236,116 @@ const Wallet = () => {
       fetchWallet();
    }, []);
 
+   // Fetch project names for transactions with project field
+   useEffect(() => {
+      const fetchProjectNames = async () => {
+         if (!wallet || !wallet.recentTransactions) return;
+         const projectIds = wallet.recentTransactions
+            .filter((tx) => tx.project)
+            .map((tx) => tx.project)
+            .filter(
+               (id, idx, arr) => arr.indexOf(id) === idx && !projectNames[id]
+            );
+         if (projectIds.length === 0) return;
+         try {
+            const results = await Promise.all(
+               projectIds.map((id) =>
+                  axios
+                     .get(`http://localhost:5000/api/projects/${id}`)
+                     .then((res) => ({ id, name: res.data.title }))
+                     .catch(() => ({ id, name: id }))
+               )
+            );
+            const names = {};
+            results.forEach((r) => {
+               names[r.id] = r.name;
+            });
+            setProjectNames((prev) => ({ ...prev, ...names }));
+         } catch {}
+      };
+      fetchProjectNames();
+      // eslint-disable-next-line
+   }, [wallet]);
+
+   // Deposit/Withdraw handlers
+   const handleDeposit = async () => {
+      setActionLoading(true);
+      try {
+         const token = localStorage.getItem('token');
+         let userId = localStorage.getItem('userId');
+         if (!userId && token) {
+            try {
+               const payload = JSON.parse(atob(token.split('.')[1]));
+               userId = payload.id || payload.userId || payload._id;
+            } catch (e) {}
+         }
+         await axios.post(
+            'http://localhost:5000/api/wallets/deposit',
+            { amount: Number(amount), description: desc, userId }, // always send userId
+            { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+         );
+         setSnackbar({
+            open: true,
+            message: 'Deposit successful!',
+            severity: 'success',
+         });
+         setDepositOpen(false);
+         setAmount('');
+         setDesc('');
+         setTimeout(() => window.location.reload(), 1000);
+      } catch (err) {
+         setSnackbar({
+            open: true,
+            message: err?.response?.data?.message || 'Deposit failed',
+            severity: 'error',
+         });
+      }
+      setActionLoading(false);
+   };
+
+   const handleWithdraw = async () => {
+      setActionLoading(true);
+      try {
+         const token = localStorage.getItem('token');
+         let userId = localStorage.getItem('userId');
+         if (!userId && token) {
+            try {
+               const payload = JSON.parse(atob(token.split('.')[1]));
+               userId = payload.id || payload.userId || payload._id;
+            } catch (e) {}
+         }
+         await axios.post(
+            'http://localhost:5000/api/wallets/withdraw',
+            { amount: Number(amount), description: desc, userId }, // always send userId
+            { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+         );
+         setSnackbar({
+            open: true,
+            message: 'Withdrawal request sent!',
+            severity: 'success',
+         });
+         setWithdrawOpen(false);
+         setAmount('');
+         setDesc('');
+         setTimeout(() => window.location.reload(), 1000);
+      } catch (err) {
+         setSnackbar({
+            open: true,
+            message: err?.response?.data?.message || 'Withdrawal failed',
+            severity: 'error',
+         });
+      }
+      setActionLoading(false);
+   };
+
    if (loading) {
       return (
-         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+         <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="400px"
+         >
             <CircularProgress size={48} sx={{ color: colors.primary }} />
          </Box>
       );
@@ -201,53 +364,114 @@ const Wallet = () => {
    return (
       <Box sx={{ maxWidth: '95%', mx: 'auto', p: 2 }}>
          {/* Header */}
-         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+         <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            mb={4}
+         >
             <Box>
-               <Typography variant="h4" fontWeight="700" color={colors.text.primary} gutterBottom>
+               <Typography
+                  variant="h4"
+                  fontWeight="700"
+                  color={colors.text.primary}
+                  gutterBottom
+               >
                   Wallet Dashboard
                </Typography>
                <Typography variant="body1" color={colors.text.secondary}>
                   Monitor your financial activity and portfolio performance
                </Typography>
             </Box>
-            <Button
-               variant="contained"
-               startIcon={<Download />}
-               sx={{
-                  bgcolor: colors.primary,
-                  color: 'white',
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  '&:hover': { bgcolor: '#0D47A1' },
-               }}
-               onClick={() => alert('Statement download coming soon!')}
-            >
-               Download Statement
-            </Button>
+            <Box display="flex" gap={2}>
+               <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  sx={{
+                     bgcolor: colors.success,
+                     color: 'white',
+                     fontWeight: 600,
+                     px: 2.5,
+                     borderRadius: 2,
+                     textTransform: 'none',
+                     '&:hover': { bgcolor: '#1B5E20' },
+                  }}
+                  onClick={() => {
+                     setDepositOpen(true);
+                     setAmount('');
+                     setDesc('');
+                  }}
+               >
+                  Deposit
+               </Button>
+               <Button
+                  variant="contained"
+                  startIcon={<Remove />}
+                  sx={{
+                     bgcolor: colors.error,
+                     color: 'white',
+                     fontWeight: 600,
+                     px: 2.5,
+                     borderRadius: 2,
+                     textTransform: 'none',
+                     '&:hover': { bgcolor: '#8B0000' },
+                  }}
+                  onClick={() => {
+                     setWithdrawOpen(true);
+                     setAmount('');
+                     setDesc('');
+                  }}
+               >
+                  Withdraw
+               </Button>
+               <Button
+                  variant="contained"
+                  startIcon={<Download />}
+                  sx={{
+                     bgcolor: colors.primary,
+                     color: 'white',
+                     fontWeight: 600,
+                     px: 2.5,
+                     borderRadius: 2,
+                     textTransform: 'none',
+                     '&:hover': { bgcolor: '#0D47A1' },
+                  }}
+                  onClick={() => alert('Statement download coming soon!')}
+               >
+                  Download Statement
+               </Button>
+            </Box>
          </Box>
 
          {/* Account Summary */}
          <Card elevation={3} sx={{ mb: 4, bgcolor: colors.surface }}>
             <CardContent sx={{ p: 3 }}>
                <Box display="flex" alignItems="center" gap={3}>
-                  <Avatar sx={{ bgcolor: colors.primary, width: 64, height: 64 }}>
+                  <Avatar
+                     sx={{ bgcolor: colors.primary, width: 64, height: 64 }}
+                  >
                      <AccountBalanceWallet sx={{ fontSize: 32 }} />
                   </Avatar>
                   <Box flex={1}>
-                     <Typography variant="h5" fontWeight="600" color={colors.text.primary}>
+                     <Typography
+                        variant="h5"
+                        fontWeight="600"
+                        color={colors.text.primary}
+                     >
                         {wallet.ownerName || 'Account Holder'}
                      </Typography>
-                     <Typography variant="body2" color={colors.text.secondary} sx={{ mt: 0.5 }}>
+                     <Typography
+                        variant="body2"
+                        color={colors.text.secondary}
+                        sx={{ mt: 0.5 }}
+                     >
                         Wallet ID: {wallet._id || 'N/A'}
                      </Typography>
                      <Typography variant="body2" color={colors.text.disabled}>
-                        Last updated: {wallet.lastUpdated ? 
-                           new Date(wallet.lastUpdated).toLocaleString() : 
-                           new Date().toLocaleString()
-                        }
+                        Last updated:{' '}
+                        {wallet.lastUpdated
+                           ? new Date(wallet.lastUpdated).toLocaleString()
+                           : new Date().toLocaleString()}
                      </Typography>
                   </Box>
                </Box>
@@ -294,12 +518,22 @@ const Wallet = () => {
          <Card elevation={2} sx={{ bgcolor: colors.surface }}>
             <CardContent sx={{ p: 0 }}>
                <Box sx={{ p: 3, pb: 1 }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                     <Typography variant="h6" fontWeight="600" color={colors.text.primary}>
+                  <Box
+                     display="flex"
+                     justifyContent="space-between"
+                     alignItems="center"
+                  >
+                     <Typography
+                        variant="h6"
+                        fontWeight="600"
+                        color={colors.text.primary}
+                     >
                         Recent Transactions
                      </Typography>
                      <Chip
-                        label={`${(wallet.recentTransactions || []).length} transactions`}
+                        label={`${
+                           (wallet.recentTransactions || []).length
+                        } transactions`}
                         size="small"
                         sx={{
                            bgcolor: colors.secondary,
@@ -323,16 +557,156 @@ const Wallet = () => {
                         />
                      </ListItem>
                   ) : (
-                     wallet.recentTransactions.map((transaction, index) => (
-                        <TransactionItem
-                           key={transaction.reference || index}
-                           transaction={transaction}
-                        />
-                     ))
+                     wallet.recentTransactions.map((transaction, index) => {
+                        // Replace project ID with project name in description for disbursement
+                        let desc = transaction.description;
+                        if (
+                           transaction.type === 'disbursement' &&
+                           transaction.project &&
+                           projectNames[transaction.project]
+                        ) {
+                           desc = `Disbursement for project ${
+                              projectNames[transaction.project]
+                           }`;
+                        }
+                        return (
+                           <TransactionItem
+                              key={transaction.reference || index}
+                              transaction={{
+                                 ...transaction,
+                                 description: desc,
+                              }}
+                           />
+                        );
+                     })
                   )}
                </List>
             </CardContent>
          </Card>
+
+         {/* Deposit Dialog */}
+         <Dialog
+            open={depositOpen}
+            onClose={() => setDepositOpen(false)}
+            maxWidth="xs"
+            fullWidth
+         >
+            <DialogTitle>
+               Deposit Funds
+               <IconButton
+                  aria-label="close"
+                  onClick={() => setDepositOpen(false)}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
+               >
+                  <Close />
+               </IconButton>
+            </DialogTitle>
+            <DialogContent>
+               <TextField
+                  label="Amount"
+                  type="number"
+                  fullWidth
+                  margin="normal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  InputProps={{
+                     startAdornment: (
+                        <InputAdornment position="start">FCFA</InputAdornment>
+                     ),
+                  }}
+               />
+               <TextField
+                  label="Description"
+                  fullWidth
+                  margin="normal"
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+               />
+            </DialogContent>
+            <DialogActions>
+               <Button onClick={() => setDepositOpen(false)} color="inherit">
+                  Cancel
+               </Button>
+               <Button
+                  onClick={handleDeposit}
+                  variant="contained"
+                  color="success"
+                  disabled={actionLoading || !amount}
+               >
+                  {actionLoading ? <CircularProgress size={20} /> : 'Deposit'}
+               </Button>
+            </DialogActions>
+         </Dialog>
+
+         {/* Withdraw Dialog */}
+         <Dialog
+            open={withdrawOpen}
+            onClose={() => setWithdrawOpen(false)}
+            maxWidth="xs"
+            fullWidth
+         >
+            <DialogTitle>
+               Withdraw Funds
+               <IconButton
+                  aria-label="close"
+                  onClick={() => setWithdrawOpen(false)}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
+               >
+                  <Close />
+               </IconButton>
+            </DialogTitle>
+            <DialogContent>
+               <TextField
+                  label="Amount"
+                  type="number"
+                  fullWidth
+                  margin="normal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  InputProps={{
+                     startAdornment: (
+                        <InputAdornment position="start">FCFA</InputAdornment>
+                     ),
+                  }}
+               />
+               <TextField
+                  label="Description"
+                  fullWidth
+                  margin="normal"
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+               />
+            </DialogContent>
+            <DialogActions>
+               <Button onClick={() => setWithdrawOpen(false)} color="inherit">
+                  Cancel
+               </Button>
+               <Button
+                  onClick={handleWithdraw}
+                  variant="contained"
+                  color="error"
+                  disabled={actionLoading || !amount}
+               >
+                  {actionLoading ? <CircularProgress size={20} /> : 'Withdraw'}
+               </Button>
+            </DialogActions>
+         </Dialog>
+
+         {/* Snackbar for feedback */}
+         <Snackbar
+            open={snackbar.open}
+            autoHideDuration={4000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+         >
+            <Alert
+               onClose={() => setSnackbar({ ...snackbar, open: false })}
+               severity={snackbar.severity}
+               sx={{ width: '100%' }}
+            >
+               {snackbar.message}
+            </Alert>
+         </Snackbar>
       </Box>
    );
 };
