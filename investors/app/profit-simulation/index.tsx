@@ -209,11 +209,12 @@ const ProfitSimulationScreen: React.FC = () => {
          {/* Header with refined styling */}
          <View
             style={{
-               height: 90,
-               backgroundColor: Colors.light.white,
+               height: 115,
+               paddingTop: 20,
+               backgroundColor: Colors.light.primaryLightnew,
                justifyContent: 'center',
                paddingHorizontal: 16,
-               marginTop: 40,
+               marginTop: 10,
                position: 'absolute',
                width: '100%',
                zIndex: 10,
@@ -231,14 +232,14 @@ const ProfitSimulationScreen: React.FC = () => {
                   style={{
                      padding: 8,
                      borderRadius: 8,
-                     backgroundColor: '#f3f4f6',
+                     backgroundColor: '#F0FFF4',
                   }}
                   onPress={() => navigation.goBack()}
                >
                   <Feather name="arrow-left" size={24} color="#374151" />
                </TouchableOpacity>
                <View className="flex-1 items-center">
-                  <Text className="text-gray-900 text-xl font-semibold text-center">
+                  <Text className="text-gray-900 text-xl font-bold text-center">
                      {project.title}
                   </Text>
                   <Text className="text-gray-500 text-sm text-center">
@@ -288,7 +289,7 @@ const ProfitSimulationScreen: React.FC = () => {
                   <View
                      key={index}
                      className={`flex-row border-b border-gray-100 ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        index % 2 === 0 ? 'bg-white' : 'bg-green-50'
                      }`}
                   >
                      <Text className="flex-1 py-4 px-4 text-sm text-gray-900">
@@ -305,7 +306,7 @@ const ProfitSimulationScreen: React.FC = () => {
 
                {/* Table Footer */}
                <View
-                  className="flex-row bg-gray-50 p-4"
+                  className="flex-row bg-green-100 p-4"
                   style={{
                      borderTopWidth: 2,
                      borderTopColor: '#e2e8f0',
@@ -351,7 +352,7 @@ const ProfitSimulationScreen: React.FC = () => {
                      <Text className="text-gray-900 text-lg font-bold">-</Text>
                   </TouchableOpacity>
 
-                  <Text className="text-lg font-medium text-gray-900">
+                  <Text className="text-lg font-medium text-gray-900 mx-3">
                      {unit} {unit === 1 ? 'Unit' : 'Units'}
                   </Text>
 
@@ -361,7 +362,7 @@ const ProfitSimulationScreen: React.FC = () => {
                            maxUnits > 0 ? Math.min(prev + 1, maxUnits) : prev
                         )
                      }
-                     className="w-10 h-10 rounded-lg items-center justify-center"
+                     className="w-10 h-10 rounded-lg items-center justify-center "
                      style={{
                         backgroundColor: '#f3f4f6',
                         shadowColor: '#000',
@@ -376,13 +377,13 @@ const ProfitSimulationScreen: React.FC = () => {
                   </TouchableOpacity>
                </View>
 
-               <Text className="text-lg font-medium text-gray-900">
+               <Text className="text-lg font-bold text-gray-900">
                   {(unit * project.unitPrice).toLocaleString()} FCFA
                </Text>
             </View>
 
             <TouchableOpacity
-               className="bg-orange-500 p-4 rounded-xl"
+               className="bg-green-800 p-4 rounded-xl h-14"
                style={{
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
@@ -392,7 +393,7 @@ const ProfitSimulationScreen: React.FC = () => {
                }}
                onPress={handleInvestment}
             >
-               <Text className="text-white text-center font-medium">
+               <Text className="text-white font-bold text-center">
                   Invest Now ({unit} {unit === 1 ? 'Unit' : 'Units'})
                </Text>
             </TouchableOpacity>

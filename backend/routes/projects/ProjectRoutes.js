@@ -6,6 +6,12 @@ const {
    updateProjectStatus,
    getProjectFundingProgress,
    getFarmerTotalInvestment, // <-- Add this
+   approveProjectCompletion, // <-- Add this
+   approveProjectProfit, // <-- Add this
+   approveProfitSubmission,
+   rejectProfitSubmission,
+   releaseProfitToInvestors,
+   getProfitReleaseHistory,
 } = require('../../controllers/projects/ProjectController');
 const authMiddleware = require('../../middleware/farmers/authMiddleware');
 const adminAuth = require('../../middleware/admins/authMiddleware');
@@ -21,5 +27,22 @@ router.get('/farmer/:farmerId/total-investment', getFarmerTotalInvestment); // <
 // PROTECTED routes
 router.post('/', authMiddleware, createProject);
 router.patch('/:id/status', adminAuth, updateProjectStatus);
+router.patch('/:id/approve-completion', adminAuth, approveProjectCompletion); // <-- Add this
+router.patch('/:id/approve-profit', adminAuth, approveProjectProfit); // <-- Add this
+// Approve/reject profit submission by transactionId
+router.patch(
+   '/:projectId/profit-submission/:transactionId/approve',
+   adminAuth,
+   approveProfitSubmission
+);
+router.patch(
+   '/:projectId/profit-submission/:transactionId/reject',
+   adminAuth,
+   rejectProfitSubmission
+);
+// Add admin endpoint to release profit to investors
+router.post('/:id/release-profit', adminAuth, releaseProfitToInvestors);
+// Add endpoint to get profit release history for a project
+router.get('/:id/profit-releases', adminAuth, getProfitReleaseHistory);
 
 module.exports = router;

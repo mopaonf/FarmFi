@@ -188,10 +188,68 @@ const rejectInvestment = async (req, res) => {
    }
 };
 
+// Get all investments for a project, grouped by investor (for analytics/contributors)
+const getInvestmentsByProject = async (req, res) => {
+   try {
+      const { project } = req.query;
+      let filter = {};
+      if (project) {
+         filter.project = project;
+      }
+      // Fetch all investments for the project, populate investor info
+      const investments = await Investment.find(filter)
+         .populate('investor', 'name email')
+         .populate('project', 'title unitPrice');
+      // Group by investor and sum units and amount
+      const grouped = {};
+      for (const inv of investments) {
+         const id = inv.investor?._id?.toString() || inv.investor?.toString();
+         if (!grouped[id]) {
+            grouped[id] = {
+               investor: inv.investor,
+               // Number of investments = total units (not count of docs)
+               numberOfInvestments: 0,
+               totalAmount: 0,
+               totalUnits: 0,
+            };
+         }
+         grouped[id].numberOfInvestments += inv.units || 0;
+         grouped[id].totalAmount += inv.amount || 0;
+         grouped[id].totalUnits += inv.units || 0;
+      }
+      res.json({
+         investments,
+         summary: Object.values(grouped),
+      });
+   } catch (error) {
+      res.status(500).json({ error: error.message });
+   }
+};
+
+// Get all investments for a project (raw, not grouped)
+const getInvestments = async (req, res) => {
+   try {
+      const { project } = req.query;
+      let filter = {};
+      if (project) {
+         filter.project = project;
+      }
+      // Optionally, add more filters here
+      const investments = await Investment.find(filter)
+         .populate('investor', 'name email')
+         .populate('project', 'title');
+      res.json(investments);
+   } catch (error) {
+      res.status(500).json({ error: error.message });
+   }
+};
+
 module.exports = {
    getPendingInvestments,
    confirmInvestment,
    rejectInvestment,
    getInvestmentDetails,
    getInvestmentStats,
+   getInvestmentsByProject,
+   getInvestments, // <-- export this
 };

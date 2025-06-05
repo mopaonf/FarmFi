@@ -6,21 +6,39 @@ import {
    Image,
    TouchableOpacity,
    ScrollView,
+   StatusBar,
+   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
-import { Colors } from '../../constants/Colors';
 import ProfileMenuItem from '../../components/ProfileMenuItem';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatCurrency';
+
+// Professional color palette based on green theme
+const Colors = {
+   primary: '#2e7d32',
+   primaryLight: '#4caf50',
+   primaryDark: '#1b5e20',
+   surface: '#ffffff',
+   background: '#f8fdf9',
+   card: '#ffffff',
+   text: '#1a1a1a',
+   textSecondary: '#6b7280',
+   border: '#e5e7eb',
+   success: '#10b981',
+   warning: '#f59e0b',
+   error: '#ef4444',
+   shadow: 'rgba(46, 125, 50, 0.08)',
+};
 
 interface WalletStats {
    balance: number;
    totalInvested: number;
    totalReturns: number;
    pendingReturns: number;
-   recentTransactions: any[]; // We can type this more specifically later
+   recentTransactions: any[];
 }
 
 const AccountScreen: React.FC = () => {
@@ -33,265 +51,314 @@ const AccountScreen: React.FC = () => {
    });
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
+   const [refreshing, setRefreshing] = useState(false);
 
    useEffect(() => {
-      const fetchWalletData = async () => {
-         try {
-            setLoading(true);
-            const token = await AsyncStorage.getItem('token');
-            if (!token || !user?._id) return;
-
-            const response = await fetch(
-               `http://192.168.5.1:5000/api/wallets/stats`,
-               {
-                  headers: {
-                     Authorization: `Bearer ${token}`,
-                  },
-               }
-            );
-
-            if (!response.ok) {
-               throw new Error('Failed to fetch wallet data');
-            }
-
-            const data: WalletStats = await response.json();
-            setWalletData({
-               balance: data.balance,
-               totalInvestment: data.totalInvested,
-               totalReturn: data.totalReturns,
-            });
-            setError(null);
-         } catch (error) {
-            console.error('Error fetching wallet data:', error);
-            setError('Failed to load wallet data');
-            setWalletData({
-               balance: 0,
-               totalInvestment: 0,
-               totalReturn: 0,
-            });
-         } finally {
-            setLoading(false);
-         }
-      };
-
       fetchWalletData();
    }, [user?._id]);
+
+   const fetchWalletData = async () => {
+      try {
+         setLoading(true);
+         const token = await AsyncStorage.getItem('token');
+         if (!token || !user?._id) return;
+
+         const response = await fetch(
+            `http://192.168.5.1:5000/api/wallets/stats`,
+            {
+               headers: { Authorization: `Bearer ${token}` },
+            }
+         );
+
+         if (!response.ok) throw new Error('Failed to fetch wallet data');
+
+         const data: WalletStats = await response.json();
+         setWalletData({
+            balance: data.balance,
+            totalInvestment: data.totalInvested,
+            totalReturn: data.totalReturns,
+         });
+         setError(null);
+      } catch (error) {
+         console.error('Error fetching wallet data:', error);
+         setError('Failed to load wallet data');
+         setWalletData({ balance: 0, totalInvestment: 0, totalReturn: 0 });
+      } finally {
+         setLoading(false);
+      }
+   };
 
    const handleLogout = async () => {
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
       logout();
-      router.replace('/(auth)'); // Updated navigation path
+      router.replace('/(auth)');
    };
 
-   const renderWalletSection = () => {
-      if (loading) {
-         return (
-            <View className="px-6 pb-6">
-               <View className="bg-white rounded-2xl p-4 shadow-sm items-center justify-center">
-                  <Text className="text-gray-500">Loading wallet data...</Text>
+   const onRefresh = React.useCallback(async () => {
+      setRefreshing(true);
+      await fetchWalletData();
+      setRefreshing(false);
+   }, []);
+
+   const WalletCard = () => (
+      <View className="mx-6 mb-6">
+         <View
+            style={{
+               backgroundColor: Colors.card,
+               shadowColor: Colors.shadow,
+               shadowOffset: { width: 0, height: 4 },
+               shadowOpacity: 1,
+               shadowRadius: 12,
+               elevation: 8,
+            }}
+            className="rounded-3xl p-6"
+         >
+            <View className="flex-row items-center justify-between mb-6">
+               <Text
+                  style={{ color: Colors.textSecondary }}
+                  className="text-sm font-medium uppercase tracking-wide"
+               >
+                  Portfolio Overview
+               </Text>
+               <View
+                  style={{ backgroundColor: Colors.primary + '15' }}
+                  className="px-3 py-1 rounded-full"
+               >
+                  <Text
+                     style={{ color: Colors.primary }}
+                     className="text-xs font-semibold"
+                  >
+                     ACTIVE
+                  </Text>
                </View>
             </View>
-         );
-      }
 
-      if (error) {
-         return (
-            <View className="px-6 pb-6">
-               <View className="bg-white rounded-2xl p-4 shadow-sm items-center justify-center">
-                  <Text className="text-red-500">{error}</Text>
-                  <TouchableOpacity
-                     className="mt-2 bg-gray-100 px-4 py-2 rounded-lg"
-                     onPress={() => fetchWalletData()}
+            {loading ? (
+               <View className="items-center py-8">
+                  <Text style={{ color: Colors.textSecondary }}>
+                     Loading portfolio...
+                  </Text>
+               </View>
+            ) : error ? (
+               <View className="items-center py-8">
+                  <Text
+                     style={{ color: Colors.error }}
+                     className="text-sm mb-3"
                   >
-                     <Text>Retry</Text>
+                     {error}
+                  </Text>
+                  <TouchableOpacity
+                     onPress={fetchWalletData}
+                     style={{ backgroundColor: Colors.primary }}
+                     className="px-4 py-2 rounded-lg"
+                  >
+                     <Text className="text-white font-medium">Retry</Text>
                   </TouchableOpacity>
                </View>
-            </View>
-         );
-      }
-
-      return (
-         <View className="px-6 pb-6">
-            <View className="bg-white rounded-2xl p-4 shadow-sm">
-               <Text className="text-lg font-[Poppins_500Medium] text-gray-800 mb-4">
-                  Wallet Balance
-               </Text>
-               <Text className="text-3xl font-[Poppins_600SemiBold] text-gray-900 mb-6">
-                  {formatCurrency(walletData.balance)}
-               </Text>
-
-               <View className="flex-row justify-between">
-                  <View>
-                     <Text className="text-sm font-[Poppins_400Regular] text-gray-500">
-                        Total Investment
-                     </Text>
-                     <Text className="text-base font-[Poppins_500Medium] text-gray-800">
-                        {formatCurrency(walletData.totalInvestment)}
-                     </Text>
-                  </View>
-                  <View>
-                     <Text className="text-sm font-[Poppins_400Regular] text-gray-500">
-                        Total Returns
+            ) : (
+               <>
+                  <View className="mb-8">
+                     <Text
+                        style={{ color: Colors.textSecondary }}
+                        className="text-sm font-medium mb-1"
+                     >
+                        Total Balance
                      </Text>
                      <Text
-                        className="text-base font-[Poppins_500Medium]"
-                        style={{ color: Colors.light.success }}
+                        style={{ color: Colors.text }}
+                        className="text-4xl font-bold"
                      >
-                        +{formatCurrency(walletData.totalReturn)}
+                        {formatCurrency(walletData.balance)}
                      </Text>
                   </View>
-               </View>
 
-               {/* Add Wallet Actions */}
-               <View className="flex-row justify-between mt-6 pt-6 border-t border-gray-100">
-                  <TouchableOpacity
-                     className="flex-1 mr-2 bg-orange-500 py-3 rounded-xl items-center"
-                     onPress={() => router.push('/wallet/deposit')}
+                  <View className="flex-row justify-between mb-8">
+                     <View className="flex-1">
+                        <Text
+                           style={{ color: Colors.textSecondary }}
+                           className="text-xs font-medium mb-1"
+                        >
+                           INVESTED
+                        </Text>
+                        <Text
+                           style={{ color: Colors.text }}
+                           className="text-lg font-semibold"
+                        >
+                           {formatCurrency(walletData.totalInvestment)}
+                        </Text>
+                     </View>
+                     <View className="flex-1 items-end">
+                        <Text
+                           style={{ color: Colors.textSecondary }}
+                           className="text-xs font-medium mb-1"
+                        >
+                           RETURNS
+                        </Text>
+                        <Text
+                           style={{ color: Colors.success }}
+                           className="text-lg font-semibold"
+                        >
+                           +{formatCurrency(walletData.totalReturn)}
+                        </Text>
+                     </View>
+                  </View>
+
+                  <View className="flex-row space-x-3">
+                     <TouchableOpacity
+                        onPress={() => router.push('/wallet/deposit')}
+                        style={{ backgroundColor: Colors.primary }}
+                        className="flex-1 py-4 rounded-2xl items-center"
+                     >
+                        <Text className="text-white font-semibold text-base">
+                           Deposit
+                        </Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity
+                        onPress={() => router.push('/wallet/withdraw')}
+                        style={{
+                           backgroundColor: Colors.background,
+                           borderWidth: 2,
+                           borderColor: Colors.border,
+                        }}
+                        className="flex-1 py-4 rounded-2xl items-center"
+                     >
+                        <Text
+                           style={{ color: Colors.text }}
+                           className="font-semibold text-base"
+                        >
+                           Withdraw
+                        </Text>
+                     </TouchableOpacity>
+                  </View>
+               </>
+            )}
+         </View>
+      </View>
+   );
+
+   const ProfileHeader = () => (
+      <View className="px-6 pt-4 pb-6">
+         <View className="flex-row items-center">
+            <View className="relative">
+               <Image
+                  source={require('../../assets/images/Profile_Picture.jpg')}
+                  className="w-20 h-20 rounded-2xl"
+                  resizeMode="cover"
+               />
+               <View
+                  style={{ backgroundColor: Colors.success }}
+                  className="w-4 h-4 rounded-full border-2 border-white absolute -bottom-1 -right-1"
+               />
+            </View>
+
+            <View className="flex-1 ml-4">
+               <Text
+                  style={{ color: Colors.text }}
+                  className="text-xl font-bold mb-1"
+               >
+                  {user?.name}
+               </Text>
+               <Text
+                  style={{ color: Colors.textSecondary }}
+                  className="text-base mb-2"
+               >
+                  @{user?.username}
+               </Text>
+               <View className="flex-row items-center">
+                  <Feather name="mail" size={14} color={Colors.textSecondary} />
+                  <Text
+                     style={{ color: Colors.textSecondary }}
+                     className="ml-2 text-sm"
                   >
-                     <Text className="text-white font-[Poppins_500Medium]">
-                        Deposit
-                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                     className="flex-1 ml-2 bg-gray-100 py-3 rounded-xl items-center"
-                     onPress={() => router.push('/wallet/withdraw')}
-                  >
-                     <Text className="text-gray-700 font-[Poppins_500Medium]">
-                        Withdraw
-                     </Text>
-                  </TouchableOpacity>
+                     {user?.email}
+                  </Text>
                </View>
             </View>
          </View>
-      );
-   };
+      </View>
+   );
+
+   const MenuSection = () => (
+      <View
+         style={{ backgroundColor: Colors.background }}
+         className="flex-1 rounded-t-3xl pt-6"
+      >
+         <Text
+            style={{ color: Colors.text }}
+            className="text-lg font-bold px-6 mb-4"
+         >
+            Account Management
+         </Text>
+
+         <View className="mx-6 mb-6">
+            <View
+               style={{
+                  backgroundColor: Colors.card,
+                  shadowColor: Colors.shadow,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 1,
+                  shadowRadius: 8,
+                  elevation: 4,
+               }}
+               className="rounded-2xl overflow-hidden"
+            >
+               <ProfileMenuItem
+                  title="Contact Information"
+                  onPress={() => {}}
+                  icon="user"
+               />
+               <ProfileMenuItem
+                  title="Funding Sources"
+                  onPress={() => {}}
+                  icon="dollar-sign"
+               />
+               <ProfileMenuItem
+                  title="Bank Accounts"
+                  onPress={() => {}}
+                  icon="credit-card"
+               />
+               <ProfileMenuItem
+                  title="Documents"
+                  onPress={() => {}}
+                  icon="file-text"
+               />
+               <ProfileMenuItem
+                  title="Settings"
+                  onPress={() => {}}
+                  icon="settings"
+               />
+               <ProfileMenuItem
+                  title="Sign Out"
+                  onPress={handleLogout}
+                  icon="log-out"
+               />
+            </View>
+         </View>
+      </View>
+   );
 
    return (
       <SafeAreaView
-         style={{ backgroundColor: Colors.light.surface }}
+         style={{ backgroundColor: Colors.surface }}
          className="flex-1"
       >
-         <ScrollView>
-            {/* Profile Header Section */}
-            <View className="px-6 pt-8 pb-10">
-               <View className="flex-row">
-                  {/* Profile Picture Container */}
-                  <View
-                     style={{ backgroundColor: Colors.light.surface }}
-                     className="w-[100px] h-[100px] rounded-full shadow-lg relative"
-                  >
-                     <Image
-                        source={require('../../assets/images/Profile_Picture.jpg')}
-                        className="w-full h-full rounded-full"
-                        resizeMode="cover"
-                     />
-                     {/* Status Indicator */}
-                     <View
-                        style={{
-                           backgroundColor: Colors.light.success,
-                           borderColor: Colors.light.surface,
-                        }}
-                        className="w-[14px] h-[14px] rounded-full border-2 absolute bottom-0.5 right-0.5"
-                     />
-                  </View>
-
-                  {/* Profile Info */}
-                  <View className="flex-1 justify-center pl-6">
-                     <Text
-                        style={{ color: Colors.light.text }}
-                        className="text-2xl font-[Poppins_500Medium] mb-1"
-                     >
-                        @{user?.username}
-                     </Text>
-                     <Text
-                        style={{ color: Colors.light.text }}
-                        className="text-lg font-[Poppins_400Regular] mb-1"
-                     >
-                        {user?.name}
-                     </Text>
-                     <View className="flex-row items-center mb-1">
-                        <Feather
-                           name="mail"
-                           size={14}
-                           color={Colors.light.icon}
-                        />
-                        <Text
-                           style={{ color: Colors.light.icon }}
-                           className="ml-2 text-sm font-[Poppins_400Regular]"
-                        >
-                           {user?.email}
-                        </Text>
-                     </View>
-                     <View className="flex-row items-center">
-                        <View
-                           style={{
-                              backgroundColor: Colors.light.primary + '15',
-                           }}
-                           className="px-3 py-1 mt-2 rounded-full"
-                        >
-                           <Text
-                              style={{ color: Colors.light.primary }}
-                              className="text-xs font-[Poppins_500Medium]"
-                           >
-                              Active Investor
-                           </Text>
-                        </View>
-                     </View>
-                  </View>
-               </View>
-            </View>
-
-            {/* Wallet Section */}
-            {renderWalletSection()}
-
-            {/* Menu Section - Modified */}
-            <View
-               style={{ backgroundColor: Colors.light.surfaceHover }}
-               className="rounded-t-[30px] pt-6 pb-8" // Added pb-8 for bottom padding
-            >
-               <Text
-                  style={{ color: Colors.light.text }}
-                  className="text-base font-[Poppins_500Medium] ml-6 mb-4"
-               >
-                  Account Settings
-               </Text>
-               <View
-                  style={{ backgroundColor: Colors.light.surface }}
-                  className="mx-4 rounded-2xl shadow-sm"
-               >
-                  <ProfileMenuItem
-                     title="Contact Info"
-                     onPress={() => {}}
-                     icon="user"
-                  />
-                  <ProfileMenuItem
-                     title="Source of Funding Info"
-                     onPress={() => {}}
-                     icon="dollar-sign"
-                  />
-                  <ProfileMenuItem
-                     title="Bank Account Info"
-                     onPress={() => {}}
-                     icon="credit-card"
-                  />
-                  <ProfileMenuItem
-                     title="Document Info"
-                     onPress={() => {}}
-                     icon="file-text"
-                  />
-                  <ProfileMenuItem
-                     title="Settings"
-                     onPress={() => {}}
-                     icon="settings"
-                  />
-                  <ProfileMenuItem
-                     title="Logout"
-                     onPress={handleLogout}
-                     icon="log-out"
-                  />
-               </View>
-            </View>
+         <StatusBar barStyle="dark-content" backgroundColor={Colors.surface} />
+         <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            refreshControl={
+               <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[Colors.primary]}
+                  tintColor={Colors.primary}
+               />
+            }
+         >
+            <ProfileHeader />
+            <WalletCard />
+            <MenuSection />
          </ScrollView>
       </SafeAreaView>
    );

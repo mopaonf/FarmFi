@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
    View,
    TouchableOpacity,
    SafeAreaView,
    ScrollView,
    Text,
+   RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import SearchBar from '../../components/SearchBar';
@@ -17,43 +18,50 @@ const ProductScreen: React.FC = () => {
    const [projects, setProjects] = useState<any[]>([]);
    const [filteredProjects, setFilteredProjects] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
+   const [refreshing, setRefreshing] = useState(false);
    const router = useRouter();
 
+   const fetchProjects = async () => {
+      try {
+         const res = await fetch(
+            'http://192.168.5.1:5000/api/projects?status=active'
+         );
+         const data = await res.json();
+         const projectsData = Array.isArray(data) ? data : [];
+
+         // Calculate actual available units for each project
+         const processedProjects = projectsData.map((project) => ({
+            ...project,
+            availableUnits: project.totalUnits - (project.unitsInvested || 0),
+         }));
+
+         // Filter active projects with available units
+         const activeProjects = processedProjects.filter(
+            (project) =>
+               project.status === 'active' &&
+               project.fundingStatus !== 'completed' &&
+               project.availableUnits > 0
+         );
+
+         setProjects(activeProjects);
+         setFilteredProjects(activeProjects);
+      } catch (e) {
+         console.error('Error fetching projects:', e);
+         setProjects([]);
+         setFilteredProjects([]);
+      } finally {
+         setLoading(false);
+      }
+   };
+
    useEffect(() => {
-      const fetchProjects = async () => {
-         try {
-            const res = await fetch(
-               'http://192.168.5.1:5000/api/projects?status=active'
-            );
-            const data = await res.json();
-            const projectsData = Array.isArray(data) ? data : [];
-
-            // Calculate actual available units for each project
-            const processedProjects = projectsData.map((project) => ({
-               ...project,
-               availableUnits:
-                  project.totalUnits - (project.unitsInvested || 0),
-            }));
-
-            // Filter active projects with available units
-            const activeProjects = processedProjects.filter(
-               (project) =>
-                  project.status === 'active' &&
-                  project.fundingStatus !== 'completed' &&
-                  project.availableUnits > 0
-            );
-
-            setProjects(activeProjects);
-            setFilteredProjects(activeProjects);
-         } catch (e) {
-            console.error('Error fetching projects:', e);
-            setProjects([]);
-            setFilteredProjects([]);
-         } finally {
-            setLoading(false);
-         }
-      };
       fetchProjects();
+   }, []);
+
+   const onRefresh = useCallback(async () => {
+      setRefreshing(true);
+      await fetchProjects();
+      setRefreshing(false);
    }, []);
 
    // Add helper function for available units
@@ -84,7 +92,7 @@ const ProductScreen: React.FC = () => {
       <SafeAreaView className="flex-1 bg-white">
          {/* Search and Filter Header */}
          <View className="pt-2 px-6 flex-row items-center justify-between">
-            <View className="w-[85%]">
+            <View className="w-[90%]">
                <SearchBar onSearch={handleSearch} />
             </View>
             <TouchableOpacity>
@@ -97,7 +105,17 @@ const ProductScreen: React.FC = () => {
             <CategoryFilter />
          </View>
 
-         <ScrollView className="flex-1 pt-8">
+         <ScrollView
+            className="flex-1 pt-8"
+            refreshControl={
+               <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#2e7d32']}
+                  tintColor="#2e7d32"
+               />
+            }
+         >
             <View className="px-4">
                {loading ? (
                   <Text>Loading...</Text>

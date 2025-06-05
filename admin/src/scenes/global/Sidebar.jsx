@@ -186,6 +186,13 @@ const Sidebar = () => {
                      selected={selected}
                      setSelected={setSelected}
                   />
+                  <Item
+                     title="Contributors"
+                     to="/contributors"
+                     icon={<ContactsOutlinedIcon />}
+                     selected={selected}
+                     setSelected={setSelected}
+                  />
 
                   <Typography
                      variant="h6"

@@ -10,7 +10,8 @@ const transactionSchema = new mongoose.Schema({
          'payout',
          'admin-credit',
          'admin-debit',
-         'disbursement', 
+         'disbursement',
+         'profit_submission', // <-- ensure this is present
       ],
       required: true,
    },
@@ -47,6 +48,11 @@ const transactionSchema = new mongoose.Schema({
       unique: true,
       required: true,
       sparse: true, // <-- add this line
+   },
+   campayReference: {
+      type: String,
+      default: null,
+      index: true, // for faster lookup
    },
    paymentMethod: {
       type: String,

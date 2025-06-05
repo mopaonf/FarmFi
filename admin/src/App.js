@@ -8,6 +8,7 @@ import FarmersPage from './scenes/farmers';
 import InvestorsPage from './scenes/investors';
 import TransactionPage from './scenes/transactions';
 import InvestmentConfirmationPage from './scenes/investmentconfirmation';
+import ContributorsPage from './scenes/contributors';
 import Team from './scenes/team';
 import Invoices from './scenes/invoices';
 import Contacts from './scenes/contacts';
@@ -81,6 +82,10 @@ function App() {
                                  <Route
                                     path="/transactions"
                                     element={<TransactionPage />}
+                                 />
+                                 <Route
+                                    path="/contributors"
+                                    element={<ContributorsPage />}
                                  />
                                  <Route path="/faq" element={<FAQ />} />
                                  <Route

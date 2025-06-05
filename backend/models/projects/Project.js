@@ -62,6 +62,9 @@ const ProjectSchema = new mongoose.Schema(
             'funded',
             'completed',
             'denied',
+            'pending_completion',
+            'awaiting_admin_completion',
+            'submitted',
          ],
          default: 'draft',
          set: (v) => v.toLowerCase(),
@@ -161,6 +164,39 @@ const ProjectSchema = new mongoose.Schema(
          type: Number,
          default: 0, // Percentage of funding completed
       },
+      pendingProfit: {
+         amount: { type: Number },
+         notes: { type: String },
+         submittedAt: { type: Date },
+         status: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending',
+         },
+      },
+      profitSubmissions: [
+         {
+            transactionId: { type: String, required: true },
+            amount: { type: Number, required: true },
+            notes: { type: String },
+            submittedAt: { type: Date, required: true },
+            status: {
+               type: String,
+               enum: ['pending', 'approved', 'rejected', 'completed'], // <-- add 'completed'
+               default: 'pending',
+            },
+            adminReviewedAt: { type: Date },
+            adminReviewer: {
+               type: mongoose.Schema.Types.ObjectId,
+               ref: 'Admin',
+            },
+         },
+      ],
+      totalProfit: {
+         type: Number,
+         default: 0,
+         min: 0,
+      },
    },
    {
       timestamps: true,
@@ -198,6 +234,18 @@ ProjectSchema.methods.updateFundingStatus = function () {
    }
 
    return this.save();
+};
+
+// --- NEW STATIC METHOD: recalculate totalProfit ---
+ProjectSchema.statics.recalculateTotalProfit = async function (projectId) {
+   const project = await this.findById(projectId);
+   if (!project) return 0;
+   const total = (project.profitSubmissions || [])
+      .filter((ps) => ps.status === 'approved')
+      .reduce((sum, ps) => sum + (ps.amount || 0), 0);
+   project.totalProfit = total;
+   await project.save();
+   return total;
 };
 
 module.exports = mongoose.model('Project', ProjectSchema);

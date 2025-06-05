@@ -73,6 +73,9 @@ const TransactionPage = () => {
    const [detailsModal, setDetailsModal] = useState(false);
    const [actionLoading, setActionLoading] = useState(false);
    const [actionError, setActionError] = useState(null);
+   const [profitActionLoading, setProfitActionLoading] = useState(false);
+   const [profitActionError, setProfitActionError] = useState('');
+   const [profitActionSuccess, setProfitActionSuccess] = useState('');
 
    useEffect(() => {
       fetchTransactions();
@@ -153,6 +156,60 @@ const TransactionPage = () => {
          setActionError('Failed to decline withdrawal.');
       }
       setActionLoading(false);
+   };
+
+   // Accept profit submission
+   const handleAcceptProfitSubmission = async (transaction) => {
+      setProfitActionLoading(true);
+      setProfitActionError('');
+      setProfitActionSuccess('');
+      try {
+         const token = localStorage.getItem('adminToken');
+         console.log("Transaction object:", transaction);
+         await fetch(
+            `http://localhost:5000/api/projects/${transaction.project._id}/profit-submission/${transaction.reference}/approve`,
+            {
+               method: 'PATCH',
+               headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+         setProfitActionSuccess('Profit submission approved.');
+         setDetailsModal(false);
+         fetchTransactions();
+      } catch (err) {
+         setProfitActionError('Failed to approve profit submission.');
+      }
+      setProfitActionLoading(false);
+   };
+
+   // Reject profit submission
+   const handleRejectProfitSubmission = async (transaction) => {
+      setProfitActionLoading(true);
+      setProfitActionError('');
+      setProfitActionSuccess('');
+      try {
+         const token = localStorage.getItem('adminToken');
+         console.log("Transaction object:", transaction);
+         await fetch(
+            `http://localhost:5000/api/projects/${transaction.project._id}/profit-submission/${transaction.reference}/reject`,
+            {
+               method: 'PATCH',
+               headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+         setProfitActionSuccess('Profit submission rejected.');
+         setDetailsModal(false);
+         fetchTransactions();
+      } catch (err) {
+         setProfitActionError('Failed to reject profit submission.');
+      }
+      setProfitActionLoading(false);
    };
 
    // Filter transactions based on search query and selected filter
@@ -640,6 +697,60 @@ const TransactionPage = () => {
                                     {actionError && (
                                        <Typography color="error" ml={2}>
                                           {actionError}
+                                       </Typography>
+                                    )}
+                                 </Box>
+                              </Grid>
+                           )}
+
+                        {/* Admin actions for profit_submission */}
+                        {selectedTransaction.type === 'profit_submission' &&
+                           selectedTransaction.status === 'pending' && (
+                              <Grid item xs={12} mt={2}>
+                                 <Box
+                                    display="flex"
+                                    justifyContent="flex-end"
+                                    alignItems="center"
+                                    gap={2}
+                                 >
+                                    <Button
+                                       variant="contained"
+                                       color="success"
+                                       startIcon={<CheckIcon />}
+                                       disabled={profitActionLoading}
+                                       onClick={() =>
+                                          handleAcceptProfitSubmission(
+                                             selectedTransaction
+                                          )
+                                       }
+                                    >
+                                       {profitActionLoading
+                                          ? 'Processing...'
+                                          : 'Accept'}
+                                    </Button>
+                                    <Button
+                                       variant="contained"
+                                       color="error"
+                                       startIcon={<CloseIcon />}
+                                       disabled={profitActionLoading}
+                                       onClick={() =>
+                                          handleRejectProfitSubmission(
+                                             selectedTransaction
+                                          )
+                                       }
+                                    >
+                                       {profitActionLoading
+                                          ? 'Processing...'
+                                          : 'Reject'}
+                                    </Button>
+                                    {profitActionError && (
+                                       <Typography color="error" ml={2}>
+                                          {profitActionError}
+                                       </Typography>
+                                    )}
+                                    {profitActionSuccess && (
+                                       <Typography color="success.main" ml={2}>
+                                          {profitActionSuccess}
                                        </Typography>
                                     )}
                                  </Box>

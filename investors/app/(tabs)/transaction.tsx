@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
    View,
    SafeAreaView,
    ScrollView,
    Text,
    ActivityIndicator,
+   RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
@@ -30,14 +31,14 @@ interface Transaction {
 
 const TransactionScreen: React.FC = () => {
    const [transactions, setTransactions] = useState<Transaction[]>([]);
+   const [filteredTransactions, setFilteredTransactions] = useState<
+      Transaction[]
+   >([]);
    const [loading, setLoading] = useState(true);
    const [activeTab, setActiveTab] = React.useState<'history' | 'updates'>(
       'history'
    );
-
-   useEffect(() => {
-      fetchTransactions();
-   }, []);
+   const [refreshing, setRefreshing] = useState(false);
 
    const fetchTransactions = async () => {
       try {
@@ -55,11 +56,44 @@ const TransactionScreen: React.FC = () => {
          }
          const data = await response.json();
          setTransactions(data);
+         setFilteredTransactions(data);
       } catch (error) {
          console.error('Error fetching transactions:', error);
+         setTransactions([]);
+         setFilteredTransactions([]);
       } finally {
          setLoading(false);
       }
+   };
+
+   useEffect(() => {
+      fetchTransactions();
+   }, []);
+
+   const onRefresh = useCallback(async () => {
+      setRefreshing(true);
+      await fetchTransactions();
+      setRefreshing(false);
+   }, []);
+
+   const handleSearch = (searchText: string) => {
+      if (!searchText.trim()) {
+         setFilteredTransactions(transactions);
+         return;
+      }
+
+      const searchQuery = searchText.toLowerCase();
+      const filtered = transactions.filter((transaction) => {
+         return (
+            transaction.description?.toLowerCase().includes(searchQuery) ||
+            transaction.reference?.toLowerCase().includes(searchQuery) ||
+            transaction.projectDetails?.title
+               ?.toLowerCase()
+               .includes(searchQuery)
+         );
+      });
+
+      setFilteredTransactions(filtered);
    };
 
    const getTransactionIcon = (type: string) => {
@@ -92,7 +126,7 @@ const TransactionScreen: React.FC = () => {
 
    const renderContent = () => {
       if (activeTab === 'history') {
-         if (transactions.length === 0) {
+         if (filteredTransactions.length === 0) {
             return (
                <View className="flex-1 justify-center items-center p-4">
                   <Text className="text-gray-500 text-center">
@@ -103,8 +137,18 @@ const TransactionScreen: React.FC = () => {
          }
 
          return (
-            <ScrollView className="flex-1 px-4">
-               {transactions.map((transaction, index) => (
+            <ScrollView
+               className="flex-1 px-4"
+               refreshControl={
+                  <RefreshControl
+                     refreshing={refreshing}
+                     onRefresh={onRefresh}
+                     colors={['#2e7d32']}
+                     tintColor="#2e7d32"
+                  />
+               }
+            >
+               {filteredTransactions.map((transaction, index) => (
                   <View
                      key={transaction.reference || index}
                      className="flex-row items-center p-4 bg-white rounded-xl mb-3 shadow-sm"
@@ -228,7 +272,10 @@ const TransactionScreen: React.FC = () => {
    return (
       <SafeAreaView className="flex-1 bg-white">
          <View className="pt-2 px-6">
-            <SearchBar />
+            <SearchBar
+               onSearch={handleSearch}
+               placeholder="Search transactions..."
+            />
          </View>
 
          <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />

@@ -1,6 +1,6 @@
 const Project = require('../../models/projects/Project');
-const Investment = require('../../models/investments/Investment');
 const Wallet = require('../../models/wallets/Wallet');
+const Investment = require('../../models/investments/Investment');
 const mongoose = require('mongoose');
 
 const createProject = async (req, res) => {
@@ -225,6 +225,465 @@ const getFarmerTotalInvestment = async (req, res) => {
    }
 };
 
+// Farmer requests project completion
+const requestProjectCompletion = async (req, res) => {
+   try {
+      const project = await Project.findById(req.params.id);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+      if (project.farmer.toString() !== req.user.id) {
+         return res.status(403).json({ message: 'Not authorized' });
+      }
+      if (project.status !== 'funded') {
+         return res
+            .status(400)
+            .json({ message: 'Only funded projects can request completion' });
+      }
+      project.status = 'pending_completion';
+      project.completionRequest = {
+         notes: req.body.notes || '',
+         requestedAt: new Date(),
+      };
+      await project.save();
+      res.json({ message: 'Completion request submitted for admin approval.' });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Admin approves project completion
+const approveProjectCompletion = async (req, res) => {
+   try {
+      const project = await Project.findById(req.params.id);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+      if (project.status !== 'pending_completion') {
+         return res
+            .status(400)
+            .json({ message: 'Project is not pending completion' });
+      }
+      project.status = 'completed';
+      project.completionApprovedAt = new Date();
+      await project.save();
+      res.json({ message: 'Project marked as completed.' });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Farmer submits profit for a completed project
+const submitProjectProfit = async (req, res) => {
+   try {
+      const project = await Project.findById(req.params.id);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+      if (project.farmer.toString() !== req.user.id) {
+         return res.status(403).json({ message: 'Not authorized' });
+      }
+      if (project.status !== 'completed') {
+         return res
+            .status(400)
+            .json({ message: 'Only completed projects can submit profit' });
+      }
+      const { amount, notes } = req.body;
+      if (!amount || amount <= 0) {
+         return res
+            .status(400)
+            .json({ message: 'Profit amount must be positive' });
+      }
+
+      // Deduct profit from farmer's wallet (pending transaction)
+      const Wallet = require('../../models/wallets/Wallet');
+      const farmerWallet = await Wallet.findOne({
+         userId: req.user.id,
+         userType: 'Farmer',
+      });
+      if (!farmerWallet) {
+         return res.status(404).json({ message: 'Farmer wallet not found' });
+      }
+      if (farmerWallet.balance < amount) {
+         return res
+            .status(400)
+            .json({ message: 'Insufficient wallet balance' });
+      }
+
+      // Generate a unique reference for the transaction
+      const reference = `PROFIT-SUBMIT-${project._id}-${Date.now()}`;
+
+      // Add a pending transaction for profit payout
+      farmerWallet.balance -= amount;
+      const transaction = {
+         type: 'profit_submission',
+         amount,
+         status: 'pending',
+         project: project._id,
+         description: `Profit submission for project ${project.title}`,
+         reference,
+      };
+      farmerWallet.transactions.push(transaction);
+      await farmerWallet.save();
+
+      // Add to profitSubmissions array on the project
+      project.profitSubmissions = project.profitSubmissions || [];
+      project.profitSubmissions.push({
+         transactionId: reference,
+         amount,
+         notes: notes || '',
+         submittedAt: new Date(),
+         status: 'pending',
+      });
+
+      // Optionally update pendingProfit for backward compatibility
+      project.pendingProfit = {
+         amount,
+         notes: notes || '',
+         submittedAt: new Date(),
+         status: 'pending',
+      };
+
+      await project.save();
+      res.json({
+         message:
+            'Profit submitted for admin approval and recorded as a transaction.',
+      });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Admin approves profit and distributes to investors
+const approveProjectProfit = async (req, res) => {
+   try {
+      const project = await Project.findById(req.params.id);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+      if (
+         !project.pendingProfit ||
+         project.pendingProfit.status !== 'pending'
+      ) {
+         return res
+            .status(400)
+            .json({ message: 'No pending profit to approve' });
+      }
+      // Get all confirmed investments for this project
+      const investments = await Investment.find({
+         project: project._id,
+         status: 'confirmed',
+      });
+      const totalInvested = investments.reduce(
+         (sum, inv) => sum + inv.amount,
+         0
+      );
+      if (totalInvested === 0) {
+         return res
+            .status(400)
+            .json({ message: 'No investments to distribute profit' });
+      }
+
+      // --- Use totalProfit for distribution ---
+      // Recalculate totalProfit to ensure it's up to date
+      await Project.recalculateTotalProfit(project._id);
+      // Use only the latest approved profit submission for this payout
+      // (Or use project.totalProfit if you want to distribute all at once)
+      // Here, we distribute only the pendingProfit amount
+      const profitAmount = project.pendingProfit.amount;
+
+      for (const inv of investments) {
+         const share = (inv.amount / totalInvested) * profitAmount;
+         // Find investor wallet
+         const wallet = await Wallet.findOne({ userId: inv.investor });
+         if (wallet) {
+            wallet.balance += share;
+            wallet.transactions.push({
+               type: 'payout',
+               amount: share,
+               status: 'confirmed',
+               project: project._id,
+               investment: inv._id,
+               description: `Profit payout for project ${project.title}`,
+               reference: `PROFIT-${project._id}-${Date.now()}`,
+            });
+            await wallet.save();
+         }
+      }
+      // Mark profit as approved
+      project.pendingProfit.status = 'approved';
+      await project.save();
+      res.json({ message: 'Profit distributed to investors.' });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Admin approves profit submission (by transactionId)
+const approveProfitSubmission = async (req, res) => {
+   try {
+      const { projectId, transactionId } = req.params;
+      const project = await Project.findById(projectId);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+
+      const submission = project.profitSubmissions.find(
+         (ps) => ps.transactionId === transactionId
+      );
+      if (!submission)
+         return res
+            .status(404)
+            .json({ message: 'Profit submission not found' });
+      if (submission.status !== 'pending') {
+         return res
+            .status(400)
+            .json({ message: 'Submission already processed' });
+      }
+
+      submission.status = 'approved';
+      submission.adminReviewedAt = new Date();
+      submission.adminReviewer = req.user.id; // assuming admin id is in req.user
+
+      // Optionally update pendingProfit for backward compatibility
+      if (project.pendingProfit && project.pendingProfit.status === 'pending') {
+         project.pendingProfit.status = 'approved';
+      }
+
+      // Update the corresponding wallet transaction status to 'confirmed'
+      const Wallet = require('../../models/wallets/Wallet');
+      const wallet = await Wallet.findOne({
+         'transactions.reference': transactionId,
+      });
+      if (wallet) {
+         const tx = wallet.transactions.find(
+            (t) => t.reference === transactionId
+         );
+         if (tx && tx.status === 'pending') {
+            tx.status = 'confirmed';
+            // --- Ensure transaction amount matches the approved profit submission ---
+            tx.amount = submission.amount;
+            await wallet.save();
+         }
+      }
+
+      // --- Recalculate totalProfit after approval ---
+      await Project.recalculateTotalProfit(projectId);
+
+      await project.save();
+      res.json({ message: 'Profit submission approved.' });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Admin rejects profit submission (by transactionId)
+const rejectProfitSubmission = async (req, res) => {
+   try {
+      const { projectId, transactionId } = req.params;
+      const project = await Project.findById(projectId);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+
+      const submission = project.profitSubmissions.find(
+         (ps) => ps.transactionId === transactionId
+      );
+      if (!submission)
+         return res
+            .status(404)
+            .json({ message: 'Profit submission not found' });
+      if (submission.status !== 'pending') {
+         return res
+            .status(400)
+            .json({ message: 'Submission already processed' });
+      }
+
+      submission.status = 'rejected';
+      submission.adminReviewedAt = new Date();
+      submission.adminReviewer = req.user.id;
+
+      // Optionally update pendingProfit for backward compatibility
+      if (project.pendingProfit && project.pendingProfit.status === 'pending') {
+         project.pendingProfit.status = 'rejected';
+      }
+
+      // Update the corresponding wallet transaction status to 'failed'
+      const Wallet = require('../../models/wallets/Wallet');
+      const wallet = await Wallet.findOne({
+         'transactions.reference': transactionId,
+      });
+      if (wallet) {
+         const tx = wallet.transactions.find(
+            (t) => t.reference === transactionId
+         );
+         if (tx && tx.status === 'pending') {
+            tx.status = 'failed';
+            // --- Ensure transaction amount matches the rejected profit submission ---
+            tx.amount = submission.amount;
+            await wallet.save();
+         }
+      }
+
+      // --- Recalculate totalProfit after rejection ---
+      await Project.recalculateTotalProfit(projectId);
+
+      await project.save();
+      res.json({ message: 'Profit submission rejected.' });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Release profit to investors for a completed project (admin action)
+const releaseProfitToInvestors = async (req, res) => {
+   try {
+      const projectId = req.params.id;
+      const project = await Project.findById(projectId);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+
+      // Only allow for completed projects with profit to distribute
+      if (project.status !== 'completed') {
+         return res.status(400).json({ message: 'Project is not completed.' });
+      }
+      if (!project.totalProfit || project.totalProfit <= 0) {
+         return res.status(400).json({ message: 'No profit to distribute.' });
+      }
+      if (!project.totalUnits || project.totalUnits <= 0) {
+         return res.status(400).json({ message: 'Project has no units.' });
+      }
+
+      // Get all confirmed investments for this project
+      const investments = await Investment.find({
+         project: project._id,
+         status: 'confirmed',
+      });
+
+      if (!investments.length) {
+         return res
+            .status(400)
+            .json({ message: 'No investors to distribute profit.' });
+      }
+
+      // Calculate profit per unit
+      const profitPerUnit = project.totalProfit / project.totalUnits;
+
+      // Track payouts for response
+      const payouts = [];
+
+      // Distribute profit to each investor based on their units
+      for (const inv of investments) {
+         const investorUnits = inv.units || 0;
+         if (investorUnits <= 0) continue;
+         const investorProfit = profitPerUnit * investorUnits;
+
+         // Find or create investor wallet
+         let wallet = await Wallet.findOne({
+            userId: inv.investor,
+            userType: 'Investor',
+         });
+         if (!wallet) {
+            wallet = new Wallet({
+               userId: inv.investor,
+               userType: 'Investor',
+               balance: 0,
+               transactions: [],
+            });
+         }
+
+         wallet.balance += investorProfit;
+         wallet.totalReturns = (wallet.totalReturns || 0) + investorProfit;
+         wallet.transactions.push({
+            type: 'payout',
+            amount: investorProfit,
+            status: 'confirmed',
+            project: project._id,
+            investment: inv._id,
+            description: `Profit payout for project ${project.title}`,
+            reference: `PROFIT-${project._id}-${Date.now()}-${inv.investor}`,
+            paymentMethod: 'system',
+         });
+         await wallet.save();
+
+         payouts.push({
+            investor: inv.investor,
+            units: investorUnits,
+            profit: investorProfit,
+         });
+      }
+
+      // Optionally, mark profit as released (add a flag or timestamp)
+      project.lastProfitReleasedAt = new Date();
+
+      // --- NEW: Mark all approved profitSubmissions as 'completed' ---
+      if (Array.isArray(project.profitSubmissions)) {
+         project.profitSubmissions = project.profitSubmissions.map((ps) =>
+            ps.status === 'approved' ? { ...ps, status: 'completed' } : ps
+         );
+      }
+
+      // --- Record profit release history ---
+      project.profitReleaseHistory = project.profitReleaseHistory || [];
+      project.profitReleaseHistory.push({
+         amount: project.totalProfit,
+         date: project.lastProfitReleasedAt,
+      });
+      project.lastProfitReleasedAmount = project.totalProfit;
+
+      // --- Reset totalProfit to 0 so profit can't be released again ---
+      project.totalProfit = 0;
+
+      await project.save();
+
+      res.json({
+         message: 'Profit released to investors.',
+         payouts,
+      });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
+// Get profit release history for a project
+const getProfitReleaseHistory = async (req, res) => {
+   try {
+      const projectId = req.params.id;
+      const project = await Project.findById(projectId);
+      if (!project)
+         return res.status(404).json({ message: 'Project not found' });
+
+      // We'll use lastProfitReleasedAt and keep a history array on the project
+      // If not present, fallback to profitSubmissions with status 'approved' and released
+      // For now, let's assume we store a profitReleaseHistory array on the project
+      // If not, fallback to lastProfitReleasedAt and totalProfit
+
+      // If you have a profitReleaseHistory array:
+      if (
+         project.profitReleaseHistory &&
+         Array.isArray(project.profitReleaseHistory)
+      ) {
+         const total = project.profitReleaseHistory.reduce(
+            (sum, r) => sum + (r.amount || 0),
+            0
+         );
+         return res.json({
+            history: project.profitReleaseHistory,
+            total,
+         });
+      }
+
+      // Fallback: if not, just return lastProfitReleasedAt and last released amount
+      const history = [];
+      if (project.lastProfitReleasedAt && project.lastProfitReleasedAmount) {
+         history.push({
+            amount: project.lastProfitReleasedAmount,
+            date: project.lastProfitReleasedAt,
+         });
+      }
+      return res.json({
+         history,
+         total: history.reduce((sum, r) => sum + (r.amount || 0), 0),
+      });
+   } catch (error) {
+      res.status(500).json({ message: error.message });
+   }
+};
+
 module.exports = {
    createProject,
    getAllProjects,
@@ -233,4 +692,12 @@ module.exports = {
    getProjectFundingStatus,
    getProjectFundingProgress,
    getFarmerTotalInvestment,
+   requestProjectCompletion,
+   approveProjectCompletion,
+   submitProjectProfit,
+   approveProjectProfit,
+   approveProfitSubmission,
+   rejectProfitSubmission,
+   releaseProfitToInvestors,
+   getProfitReleaseHistory,
 };

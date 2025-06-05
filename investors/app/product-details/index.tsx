@@ -30,6 +30,7 @@ const ProductDetailsScreen: React.FC = () => {
    const [currentSlide, setCurrentSlide] = useState(0);
    const [project, setProject] = useState<any>(null);
    const [loading, setLoading] = useState(true);
+   const [isNavigating, setIsNavigating] = useState(false);
    const navigation = useNavigation();
    const router = useRouter();
    const { id } = useLocalSearchParams();
@@ -83,6 +84,19 @@ const ProductDetailsScreen: React.FC = () => {
       const offset = event.nativeEvent.contentOffset.x;
       const newIndex = Math.floor(offset / slideSize);
       setCurrentSlide(newIndex);
+   };
+
+   const handleNavigateToSimulation = async () => {
+      setIsNavigating(true);
+      try {
+         await new Promise((resolve) => setTimeout(resolve, 1500)); // Add artificial delay for smooth transition
+         router.push({
+            pathname: '/profit-simulation',
+            params: { id: project._id },
+         });
+      } finally {
+         setIsNavigating(false);
+      }
    };
 
    if (loading) {
@@ -185,7 +199,7 @@ const ProductDetailsScreen: React.FC = () => {
                   <TouchableOpacity
                      className={`flex-1 py-4 ${
                         activeTab === 'about'
-                           ? 'border-b-2 border-orange-500'
+                           ? 'border-b-2 border-green-800'
                            : ''
                      }`}
                      onPress={() => setActiveTab('about')}
@@ -194,7 +208,7 @@ const ProductDetailsScreen: React.FC = () => {
                         style={{ fontFamily: 'SF Pro Display' }}
                         className={`text-center ${
                            activeTab === 'about'
-                              ? 'text-orange-500 font-semibold'
+                              ? 'text-green-700 font-semibold'
                               : 'text-gray-600'
                         }`}
                      >
@@ -204,7 +218,7 @@ const ProductDetailsScreen: React.FC = () => {
                   <TouchableOpacity
                      className={`flex-1 py-4 ${
                         activeTab === 'manager'
-                           ? 'border-b-2 border-orange-500'
+                           ? 'border-b-2 border-green-800'
                            : ''
                      }`}
                      onPress={() => setActiveTab('manager')}
@@ -213,7 +227,7 @@ const ProductDetailsScreen: React.FC = () => {
                         style={{ fontFamily: 'SF Pro Display' }}
                         className={`text-center ${
                            activeTab === 'manager'
-                              ? 'text-orange-500 font-semibold'
+                              ? 'text-green-800 font-semibold'
                               : 'text-gray-600'
                         }`}
                      >
@@ -229,7 +243,7 @@ const ProductDetailsScreen: React.FC = () => {
                         <Text
                            style={{
                               fontFamily: 'SF Pro Display',
-                              fontSize: 24,
+                              fontSize: 28,
                               fontWeight: '700',
                            }}
                            className="mb-2"
@@ -239,9 +253,9 @@ const ProductDetailsScreen: React.FC = () => {
                         <Text
                            style={{
                               fontFamily: 'SF Pro Display',
-                              fontSize: 20,
+                              fontSize: 24,
                            }}
-                           className="text-green-600 font-semibold mb-6"
+                           className="text-green-800 font-semibold mb-14"
                         >
                            FCFA {project.unitPrice?.toLocaleString() ?? 'N/A'}
                            <Text className="text-sm"> /unit</Text>
@@ -275,7 +289,7 @@ const ProductDetailsScreen: React.FC = () => {
                            ].map((item, index) => (
                               <View
                                  key={index}
-                                 className="w-[48%] bg-gray-50 rounded-xl p-4 mb-4"
+                                 className="w-[48%] bg-green-50 rounded-xl p-4 mb-4"
                               >
                                  <Feather
                                     name={item.icon}
@@ -431,20 +445,24 @@ const ProductDetailsScreen: React.FC = () => {
          >
             <View className="p-4 px-6">
                <TouchableOpacity
-                  className="bg-gray-100 py-4 rounded-xl items-center"
+                  className="bg-green-100 py-4 rounded-xl items-center flex-row justify-center"
                   style={{ elevation: 1 }}
-                  onPress={() =>
-                     router.push({
-                        pathname: '/profit-simulation',
-                        params: { id: project._id }, // Pass the project ID
-                     })
-                  }
+                  onPress={handleNavigateToSimulation}
+                  disabled={isNavigating}
                >
+                  {isNavigating ? (
+                     <ActivityIndicator
+                        color="#2e7d32"
+                        style={{ marginRight: 8 }}
+                     />
+                  ) : null}
                   <Text
                      style={{ fontFamily: 'SF Pro Display', fontWeight: '600' }}
-                     className="text-gray-700"
+                     className="text-gray-700 text-lg"
                   >
-                     Simulate Profit
+                     {isNavigating
+                        ? 'Preparing Simulation...'
+                        : 'Simulate Profit'}
                   </Text>
                </TouchableOpacity>
             </View>

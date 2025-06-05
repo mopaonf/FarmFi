@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Wallet = require('../../models/wallets/Wallet');
 const Investment = require('../../models/investments/Investment');
 const { generateTransactionRef } = require('../../utils/helpers');
+const campayService = require('../../services/campayService');
 
 exports.createWalletForUser = async (userId) => {
    const existing = await Wallet.findOne({ userId });
@@ -23,40 +24,130 @@ exports.getWallet = async (req, res) => {
 };
 
 exports.depositFunds = async (req, res) => {
-   let { amount, description, userId } = req.body;
+   console.log('1. Deposit request received:', req.body);
+   let { amount, description, userId, phoneNumber } = req.body;
    userId =
       userId ||
       (req.user && (req.user.id || req.user._id || req.user.userId)) ||
-      req.userId ||
-      (req.query && req.query.userId);
+      req.userId;
 
+   console.log('2. Processing userId:', userId);
    amount = Number(amount);
 
    if (!userId) {
+      console.log('3. Error: User ID not found');
       return res.status(400).json({ message: 'User ID not found in request' });
    }
    if (isNaN(amount) || amount <= 0) {
+      console.log('3. Error: Invalid amount:', amount);
       return res.status(400).json({ message: 'Invalid amount' });
+   }
+   if (!phoneNumber) {
+      console.log('3. Error: Phone number missing');
+      return res.status(400).json({ message: 'Phone number is required' });
    }
 
    try {
+      console.log('4. Finding wallet for user:', userId);
       const wallet = await Wallet.findOne({ userId });
-      if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+      if (!wallet) {
+         console.log('5. Error: Wallet not found');
+         return res.status(404).json({ message: 'Wallet not found' });
+      }
 
-      wallet.balance += amount;
+      const reference = generateTransactionRef();
+      console.log('6. Generated reference:', reference);
+
+      console.log('7. Initiating Campay collection...');
+      const campayResponse = await campayService.collect(
+         amount,
+         phoneNumber,
+         description || `Wallet deposit ref: ${reference}`
+      );
+      console.log('8. Campay response:', campayResponse);
+
+      console.log('9. Adding transaction to wallet');
       wallet.transactions.push({
          type: 'deposit',
          amount,
-         status: 'confirmed',
+         status: 'pending',
          description,
-         reference: generateTransactionRef(),
+         reference,
+         campayReference: campayResponse.reference,
+         phoneNumber,
       });
-      wallet.lastUpdated = new Date();
 
+      console.log('10. Saving wallet');
       await wallet.save();
-      res.json({ message: 'Deposit successful', balance: wallet.balance });
+
+      // Setup transaction status listener
+      campayService.once('transactionUpdate', async ({ reference, status }) => {
+         try {
+            console.log('Processing transaction update:', {
+               reference,
+               status,
+            });
+            // Use campayReference for lookup
+            const wallet = await Wallet.findOne({
+               'transactions.campayReference': reference,
+            });
+
+            if (!wallet) {
+               console.error(
+                  'Wallet not found for campayReference:',
+                  reference
+               );
+               return;
+            }
+
+            const transaction = wallet.transactions.find(
+               (t) => t.campayReference === reference
+            );
+
+            if (!transaction || transaction.status !== 'pending') {
+               console.log(
+                  'Transaction already processed or not found:',
+                  reference
+               );
+               return;
+            }
+
+            const normalizedStatus = status.toUpperCase();
+            if (normalizedStatus === 'SUCCESSFUL') {
+               wallet.balance += transaction.amount;
+               transaction.status = 'confirmed';
+               console.log(
+                  `Updated wallet balance: +${transaction.amount}, New balance: ${wallet.balance}`
+               );
+            } else {
+               transaction.status = 'failed';
+               console.log('Transaction failed');
+            }
+
+            await wallet.markModified('transactions');
+            await wallet.save();
+            console.log('Wallet saved successfully');
+         } catch (err) {
+            console.error('Error updating transaction status:', err);
+         }
+      });
+
+      // Start checking transaction status
+      campayService.startTransactionCheck(campayResponse.reference);
+
+      console.log('11. Sending success response');
+      res.json({
+         message: 'Deposit initiated',
+         ussdCode: campayResponse.ussd_code,
+         operator: campayResponse.operator,
+         reference: reference,
+      });
    } catch (err) {
-      res.status(500).json({ message: err.message });
+      console.error('Deposit error:', err);
+      res.status(500).json({
+         message: err.message,
+         details: err.response?.data || 'No additional details',
+      });
    }
 };
 
@@ -171,7 +262,7 @@ exports.adminCreditWallet = async (req, res) => {
 };
 
 exports.withdrawFunds = async (req, res) => {
-   let { amount, description, userId } = req.body;
+   let { amount, description, userId, phoneNumber } = req.body;
    userId =
       userId ||
       (req.user && (req.user.id || req.user._id || req.user.userId)) ||
@@ -186,6 +277,9 @@ exports.withdrawFunds = async (req, res) => {
    if (isNaN(amt) || amt <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
    }
+   if (!phoneNumber) {
+      return res.status(400).json({ message: 'Phone number is required' });
+   }
 
    try {
       const wallet = await Wallet.findOne({ userId });
@@ -196,19 +290,31 @@ exports.withdrawFunds = async (req, res) => {
          return res.status(400).json({ message: 'Insufficient balance' });
       }
 
+      const reference = generateTransactionRef();
+
+      // Initiate Campay withdrawal
+      const campayResponse = await campayService.withdraw(
+         amt,
+         phoneNumber,
+         description || `Wallet withdrawal ref: ${reference}`
+      );
+
       wallet.balance -= amt;
       wallet.transactions.push({
          type: 'withdrawal',
          amount: amt,
          status: 'pending',
          description,
-         reference: generateTransactionRef(),
+         reference,
+         campayReference: campayResponse.reference,
+         phoneNumber,
       });
-      wallet.lastUpdated = new Date();
 
       await wallet.save();
+
       res.json({
-         message: 'Withdrawal request received',
+         message: 'Withdrawal initiated',
+         reference: reference,
          balance: wallet.balance,
       });
    } catch (err) {
@@ -349,8 +455,43 @@ exports.getWalletStats = async (req, res) => {
 };
 
 exports.handlePaymentWebhook = async (req, res) => {
-   // Payment gateway webhook handler implementation
-   res.status(200).json({ received: true });
+   const { reference, status } = req.body;
+
+   try {
+      const wallet = await Wallet.findOne({
+         'transactions.campayReference': reference,
+      });
+
+      if (!wallet) {
+         return res.status(404).json({ message: 'Transaction not found' });
+      }
+
+      const transaction = wallet.transactions.find(
+         (t) => t.campayReference === reference
+      );
+
+      if (transaction.status !== 'pending') {
+         return res.json({ message: 'Transaction already processed' });
+      }
+
+      if (status === 'successful') {
+         if (transaction.type === 'deposit') {
+            wallet.balance += transaction.amount;
+         }
+         transaction.status = 'confirmed';
+      } else {
+         if (transaction.type === 'withdrawal') {
+            wallet.balance += transaction.amount; // Refund the withdrawal amount
+         }
+         transaction.status = 'failed';
+      }
+
+      await wallet.save();
+      res.json({ message: 'Webhook processed successfully' });
+   } catch (err) {
+      console.error('Webhook processing error:', err);
+      res.status(500).json({ message: err.message });
+   }
 };
 
 exports.getTransactions = async (req, res) => {

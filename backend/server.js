@@ -23,6 +23,31 @@ app.use(
    })
 );
 
+// Add request logging middleware
+app.use((req, res, next) => {
+   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+   console.log('Request headers:', req.headers);
+   console.log('Request body:', req.body);
+
+   // Log response
+   const oldSend = res.send;
+   res.send = function (data) {
+      console.log('Response:', data);
+      oldSend.apply(res, arguments);
+   };
+
+   next();
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+   console.error('Server error:', err);
+   res.status(500).json({
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+   });
+});
+
 // Routes
 app.use('/api/farmers', FarmerRoutes); // Ensure this matches the frontend URL
 app.use('/api/admins', AdminRoutes); // Ensure this matches the frontend URL

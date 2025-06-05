@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import {
    DarkTheme,
    DefaultTheme,
@@ -6,7 +7,6 @@ import {
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import 'react-native-reanimated';
 import '@/global.css';
 
@@ -20,7 +20,7 @@ export default function RootLayout() {
    });
 
    if (!loaded) {
-      return null; // Wait for fonts to load
+      return null;
    }
 
    return (

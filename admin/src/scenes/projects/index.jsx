@@ -98,6 +98,28 @@ const ProjectsPage = () => {
       setIsModalOpen(false); // Close modal after action
    };
 
+   // Handle project completion approval (for pending_completion)
+   const handleApproveCompletion = async (id) => {
+      try {
+         const token = localStorage.getItem('adminToken');
+         const res = await axios.patch(
+            `http://localhost:5000/api/projects/${id}/approve-completion`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setProjectList((prev) =>
+            prev.map((project) =>
+               project._id === id
+                  ? { ...project, status: 'completed' }
+                  : project
+            )
+         );
+         setIsModalOpen(false);
+      } catch (err) {
+         // handle error
+      }
+   };
+
    // Open modal with selected project details
    const handleCardClick = (project) => {
       setSelectedProject(project);
@@ -904,6 +926,19 @@ const ProjectsPage = () => {
                               startIcon={<CancelOutlinedIcon />}
                            >
                               Stop Project
+                           </Button>
+                        )}
+                        {/* Approve completion for pending_completion */}
+                        {selectedProject.status === 'pending_completion' && (
+                           <Button
+                              variant="contained"
+                              color="success"
+                              onClick={() =>
+                                 handleApproveCompletion(selectedProject._id)
+                              }
+                              startIcon={<CheckCircleOutlineIcon />}
+                           >
+                              Approve Completion
                            </Button>
                         )}
                      </Box>

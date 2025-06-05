@@ -7,6 +7,7 @@ import {
    TouchableOpacity,
    ActivityIndicator,
    Alert,
+   Animated,
 } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -30,6 +31,38 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
 }) => {
    const [description, setDescription] = useState('');
    const [loading, setLoading] = useState(false);
+   const slideAnim = React.useRef(new Animated.Value(400)).current;
+   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+   React.useEffect(() => {
+      if (visible) {
+         Animated.parallel([
+            Animated.timing(slideAnim, {
+               toValue: 0,
+               duration: 300,
+               useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+               toValue: 1,
+               duration: 300,
+               useNativeDriver: true,
+            }),
+         ]).start();
+      } else {
+         Animated.parallel([
+            Animated.timing(slideAnim, {
+               toValue: 400,
+               duration: 200,
+               useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+               toValue: 0,
+               duration: 200,
+               useNativeDriver: true,
+            }),
+         ]).start();
+      }
+   }, [visible]);
 
    const handleConfirm = async () => {
       setLoading(true);
@@ -41,28 +74,50 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
       <Modal
          visible={visible}
          transparent
-         animationType="slide"
+         animationType="none"
          onRequestClose={onClose}
       >
-         <View className="flex-1 justify-end">
-            <View className="bg-white rounded-t-3xl p-6">
-               <Text className="text-xl font-[Poppins_600SemiBold] mb-4">
+         <Animated.View
+            style={{
+               flex: 1,
+               justifyContent: 'flex-end',
+               backgroundColor: 'rgba(0,0,0,0.3)',
+               opacity: fadeAnim,
+            }}
+         >
+            <Animated.View
+               className="bg-white rounded-t-3xl p-6"
+               style={[
+                  {
+                     transform: [{ translateY: slideAnim }],
+                     shadowColor: '#000',
+                     shadowOffset: {
+                        width: 0,
+                        height: -4,
+                     },
+                     shadowOpacity: 0.25,
+                     shadowRadius: 12,
+                     elevation: 20,
+                  },
+               ]}
+            >
+               <Text className="text-xl  font-semibold mb-4 pl-4">
                   Confirm Investment
                </Text>
 
                <View className="bg-gray-50 p-4 rounded-xl mb-4">
-                  <Text className="text-base font-[Poppins_500Medium] mb-2">
+                  <Text className="text-base font-semibold mb-4">
                      {projectTitle}
                   </Text>
                   <View className="flex-row justify-between mb-2">
                      <Text className="text-gray-600">Amount:</Text>
-                     <Text className="font-[Poppins_600SemiBold]">
+                     <Text className="font-gray-600">
                         {formatCurrency(amount)}
                      </Text>
                   </View>
                   <View className="flex-row justify-between">
                      <Text className="text-gray-600">Units:</Text>
-                     <Text className="font-[Poppins_600SemiBold]">{units}</Text>
+                     <Text className="font-gray-600">{units}</Text>
                   </View>
                </View>
 
@@ -75,9 +130,9 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
                   numberOfLines={3}
                />
 
-               <View className="flex-row gap-4">
+               <View className="flex-row gap-4 mb-4">
                   <TouchableOpacity
-                     className="flex-1 py-4 bg-gray-100 rounded-xl"
+                     className="flex-1 py-4 bg-gray-100 rounded-xl "
                      onPress={onClose}
                      disabled={loading}
                   >
@@ -86,7 +141,7 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
                      </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                     className="flex-1 py-4 bg-orange-500 rounded-xl"
+                     className="flex-1 py-4 bg-green-800 rounded-xl"
                      onPress={handleConfirm}
                      disabled={loading}
                   >
@@ -99,8 +154,8 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
                      )}
                   </TouchableOpacity>
                </View>
-            </View>
-         </View>
+            </Animated.View>
+         </Animated.View>
       </Modal>
    );
 };

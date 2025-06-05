@@ -8,7 +8,8 @@ const tintColorDark = '#fff';
 
 const primaryGreen = '#16a34a';
 const primaryGreenLight = '#22c55e';
-const primaryGreenDark = '#15803d';
+const primaryGreenLightnew = '#F0FFF4';
+const primaryGreenDark = '#2e7d32';
 
 export const Colors = {
   light: {
@@ -20,6 +21,7 @@ export const Colors = {
     tabIconDefault: '#687076',
     tabIconSelected: primaryGreen,
     primary: primaryGreen,
+    primaryLightnew: primaryGreenLightnew,
     primaryLight: primaryGreenLight,
     primaryDark: primaryGreenDark,
     secondary: '#gray-600',

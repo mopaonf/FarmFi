@@ -13,6 +13,10 @@ const {
 const authMiddleware = require('../../middleware/farmers/authMiddleware');
 const adminAuth = require('../../middleware/admins/authMiddleware');
 const Project = require('../../models/projects/Project'); // Import Project model
+const {
+   requestProjectCompletion,
+   submitProjectProfit,
+} = require('../../controllers/projects/ProjectController');
 
 const router = express.Router();
 
@@ -34,6 +38,16 @@ router.get('/projects', authMiddleware, async (req, res) => {
       res.status(500).json({ message: error.message });
    }
 });
+
+// Farmer requests project completion
+router.post(
+   '/projects/:id/request-completion',
+   authMiddleware,
+   requestProjectCompletion
+);
+
+// Farmer submits profit for a completed project
+router.post('/projects/:id/submit-profit', authMiddleware, submitProjectProfit);
 
 // Admin routes (catch-all must come last)
 router.get('/', adminAuth, getAllFarmers);

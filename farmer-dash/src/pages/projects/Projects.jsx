@@ -11,6 +11,12 @@ import {
    // Chip,
    // IconButton,
    // Tooltip,
+   MenuItem,
+   Select,
+   FormControl,
+   InputLabel,
+   TextField,
+   Alert,
 } from '@mui/material';
 import { tokens } from '../../theme';
 // import { projects } from '../../data/mockData';
@@ -21,6 +27,14 @@ import axios from 'axios';
 import Modal from '@mui/material/Modal';
 import Collapse from '@mui/material/Collapse';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+
+const filterOptions = [
+   { value: 'active', label: 'Active' },
+   { value: 'submitted', label: 'Submitted' },
+   { value: 'completed', label: 'Completed' },
+   { value: 'denied', label: 'Denied' },
+   { value: 'funded', label: 'Funded' },
+];
 
 const Projects = () => {
    const theme = useTheme();
@@ -36,6 +50,17 @@ const Projects = () => {
    const [expandedCards, setExpandedCards] = useState({});
    const [imageModalOpen, setImageModalOpen] = useState(false);
    const [selectedImageUrl, setSelectedImageUrl] = useState(null);
+   const [completionModalOpen, setCompletionModalOpen] = useState(false);
+   const [completionForm, setCompletionForm] = useState({ notes: '' });
+   const [completionSubmitting, setCompletionSubmitting] = useState(false);
+   const [completionError, setCompletionError] = useState('');
+   const [completionSuccess, setCompletionSuccess] = useState('');
+   const [selectedProjectId, setSelectedProjectId] = useState(null);
+   const [profitModalOpen, setProfitModalOpen] = useState(false);
+   const [profitForm, setProfitForm] = useState({ amount: '', notes: '' });
+   const [profitSubmitting, setProfitSubmitting] = useState(false);
+   const [profitError, setProfitError] = useState('');
+   const [profitSuccess, setProfitSuccess] = useState('');
 
    const handleShowMoreToggle = (id) => {
       setExpandedCards((prev) => ({
@@ -104,11 +129,84 @@ const Projects = () => {
    const filteredProjects = projectsData.filter(
       (project) =>
          project.status &&
-         // Show both 'completed' and 'funded' projects under 'completed' filter
          (selectedFilter.toLowerCase() === 'completed'
-            ? ['completed', 'funded'].includes(project.status.toLowerCase())
+            ? ['completed'].includes(project.status.toLowerCase())
             : project.status.toLowerCase() === selectedFilter.toLowerCase())
    );
+
+   // Handle completion form open
+   const handleOpenCompletionModal = (projectId) => {
+      setSelectedProjectId(projectId);
+      setCompletionForm({ notes: '' });
+      setCompletionError('');
+      setCompletionSuccess('');
+      setCompletionModalOpen(true);
+   };
+
+   // Handle completion form submit
+   const handleCompletionSubmit = async (e) => {
+      e.preventDefault();
+      setCompletionSubmitting(true);
+      setCompletionError('');
+      setCompletionSuccess('');
+      try {
+         const token = localStorage.getItem('token');
+         // You may need to adjust the endpoint and payload as per your backend
+         await axios.post(
+            `http://localhost:5000/api/farmers/projects/${selectedProjectId}/request-completion`,
+            { notes: completionForm.notes },
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setCompletionSuccess(
+            'Completion request submitted for admin approval.'
+         );
+         setCompletionModalOpen(false);
+         // Optionally, refresh projects list
+         // ...fetchProjects()...
+      } catch (err) {
+         setCompletionError(
+            err?.response?.data?.message ||
+               'Failed to submit completion request.'
+         );
+      }
+      setCompletionSubmitting(false);
+   };
+
+   // Handle profit form open
+   const handleOpenProfitModal = (projectId) => {
+      setSelectedProjectId(projectId);
+      setProfitForm({ amount: '', notes: '' });
+      setProfitError('');
+      setProfitSuccess('');
+      setProfitModalOpen(true);
+   };
+
+   // Handle profit form submit
+   const handleProfitSubmit = async (e) => {
+      e.preventDefault();
+      setProfitSubmitting(true);
+      setProfitError('');
+      setProfitSuccess('');
+      try {
+         const token = localStorage.getItem('token');
+         // Call backend to submit profit (this will deduct from wallet and record a transaction)
+         await axios.post(
+            `http://localhost:5000/api/farmers/projects/${selectedProjectId}/submit-profit`,
+            { amount: profitForm.amount, notes: profitForm.notes },
+            { headers: { Authorization: `Bearer ${token}` } }
+         );
+         setProfitSuccess(
+            'Profit submitted for admin approval and recorded as a transaction.'
+         );
+         setProfitModalOpen(false);
+         // Optionally, refresh wallet/transactions here if you want to show the new transaction line
+      } catch (err) {
+         setProfitError(
+            err?.response?.data?.message || 'Failed to submit profit.'
+         );
+      }
+      setProfitSubmitting(false);
+   };
 
    return (
       <Box ref={projectsRef} sx={{ position: 'relative' }}>
@@ -150,49 +248,50 @@ const Projects = () => {
                </Box>
             </Box>
 
-            {/* Filters */}
+            {/* Filter Dropdown */}
             <Box
                display="flex"
-               justifyContent="space-around"
+               justifyContent="flex-start"
                alignItems="center"
                mt={2}
             >
-               {['active', 'submitted', 'denied', 'completed'].map((filter) => (
-                  <Typography
-                     key={filter}
-                     variant="h6"
-                     color={
-                        selectedFilter === filter
-                           ? colors.greenAccent[400]
-                           : colors.grey[100]
-                     }
+               <FormControl sx={{ minWidth: 200 }}>
+                  <InputLabel
+                     id="project-filter-label"
+                     sx={{ color: colors.grey[100] }}
+                  >
+                     Filter by Status
+                  </InputLabel>
+                  <Select
+                     labelId="project-filter-label"
+                     id="project-filter"
+                     value={selectedFilter}
+                     label="Filter by Status"
+                     onChange={(e) => setSelectedFilter(e.target.value)}
                      sx={{
-                        cursor: 'pointer',
-                        position: 'relative',
-                        paddingBottom: '5px',
-                        '&:hover': {
-                           color: colors.greenAccent[400],
+                        color: colors.greenAccent[400],
+                        background: colors.primary[400],
+                        '.MuiOutlinedInput-notchedOutline': {
+                           borderColor: colors.greenAccent[400],
                         },
-                        '&::after': {
-                           content: '""',
-                           position: 'absolute',
-                           bottom: 0,
-                           left: '50%',
-                           width: selectedFilter === filter ? '250px' : '0',
-                           height: '3px',
-                           backgroundColor: colors.greenAccent[400],
-                           transform: 'translateX(-50%)',
-                           transition:
-                              selectedFilter === filter
-                                 ? 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                                 : 'none',
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                           borderColor: colors.greenAccent[400],
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                           borderColor: colors.greenAccent[400],
+                        },
+                        '.MuiSvgIcon-root ': {
+                           fill: colors.greenAccent[400],
                         },
                      }}
-                     onClick={() => setSelectedFilter(filter)}
                   >
-                     {filter}
-                  </Typography>
-               ))}
+                     {filterOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                           {option.label}
+                        </MenuItem>
+                     ))}
+                  </Select>
+               </FormControl>
             </Box>
          </Box>
 
@@ -246,6 +345,12 @@ const Projects = () => {
                   totalUnits > 0
                      ? Math.round((unitsSold / totalUnits) * 100)
                      : 0;
+               const isFunded = project.status?.toLowerCase() === 'funded';
+               const isPendingCompletion =
+                  project.status?.toLowerCase() === 'pending_completion' ||
+                  project.status?.toLowerCase() === 'awaiting_admin_completion';
+               const isCompleted =
+                  project.status?.toLowerCase() === 'completed';
 
                return (
                   <Card
@@ -755,6 +860,7 @@ const Projects = () => {
                            display: 'flex',
                            justifyContent: 'center',
                            mt: 3,
+                           gap: 2,
                         }}
                      >
                         <Button
@@ -779,6 +885,66 @@ const Projects = () => {
                         >
                            {isExpanded ? 'Hide Details' : 'Show More'}
                         </Button>
+                        {/* Mark as Completed button for Funded projects */}
+                        {isFunded && !isPendingCompletion && (
+                           <Button
+                              size="medium"
+                              variant="contained"
+                              color="primary"
+                              sx={{
+                                 fontWeight: 'bold',
+                                 letterSpacing: 1,
+                                 px: 4,
+                                 py: 1.5,
+                                 borderRadius: 2,
+                                 background: colors.greenAccent[400],
+                                 color: colors.primary[900],
+                                 '&:hover': {
+                                    background: colors.greenAccent[300],
+                                 },
+                              }}
+                              onClick={() =>
+                                 handleOpenCompletionModal(
+                                    project._id || project.id
+                                 )
+                              }
+                           >
+                              Mark as Completed
+                           </Button>
+                        )}
+                        {/* Add Profit button for Completed projects */}
+                        {isCompleted && (
+                           <Button
+                              size="medium"
+                              variant="contained"
+                              color="primary"
+                              sx={{
+                                 fontWeight: 'bold',
+                                 letterSpacing: 1,
+                                 px: 4,
+                                 py: 1.5,
+                                 borderRadius: 2,
+                                 background: colors.greenAccent[400],
+                                 color: colors.primary[900],
+                                 '&:hover': {
+                                    background: colors.greenAccent[300],
+                                 },
+                              }}
+                              onClick={() =>
+                                 handleOpenProfitModal(
+                                    project._id || project.id
+                                 )
+                              }
+                           >
+                              Add Profit
+                           </Button>
+                        )}
+                        {/* Show pending message if already requested */}
+                        {isPendingCompletion && (
+                           <Alert severity="info" sx={{ alignItems: 'center' }}>
+                              Completion request pending admin approval.
+                           </Alert>
+                        )}
                      </Box>
                   </Card>
                );
@@ -821,6 +987,167 @@ const Projects = () => {
                      }}
                   />
                )}
+            </Box>
+         </Modal>
+
+         {/* Completion Modal */}
+         <Modal
+            open={completionModalOpen}
+            onClose={() => setCompletionModalOpen(false)}
+            aria-labelledby="completion-modal-title"
+            aria-describedby="completion-modal-description"
+         >
+            <Box
+               sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  boxShadow: 24,
+                  p: 4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+               }}
+               component="form"
+               onSubmit={handleCompletionSubmit}
+            >
+               <Typography
+                  id="completion-modal-title"
+                  variant="h6"
+                  fontWeight="bold"
+                  mb={2}
+               >
+                  Project Completion Form
+               </Typography>
+               <TextField
+                  label="Completion Notes"
+                  multiline
+                  minRows={3}
+                  value={completionForm.notes}
+                  onChange={(e) =>
+                     setCompletionForm((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                     }))
+                  }
+                  fullWidth
+                  required
+               />
+               {completionError && (
+                  <Alert severity="error">{completionError}</Alert>
+               )}
+               {completionSuccess && (
+                  <Alert severity="success">{completionSuccess}</Alert>
+               )}
+               <Box display="flex" justifyContent="flex-end" gap={2}>
+                  <Button
+                     onClick={() => setCompletionModalOpen(false)}
+                     color="secondary"
+                     variant="outlined"
+                     disabled={completionSubmitting}
+                  >
+                     Cancel
+                  </Button>
+                  <Button
+                     type="submit"
+                     color="success"
+                     variant="contained"
+                     disabled={completionSubmitting}
+                  >
+                     {completionSubmitting
+                        ? 'Submitting...'
+                        : 'Confirm Completion'}
+                  </Button>
+               </Box>
+            </Box>
+         </Modal>
+
+         {/* Profit Modal */}
+         <Modal
+            open={profitModalOpen}
+            onClose={() => setProfitModalOpen(false)}
+            aria-labelledby="profit-modal-title"
+            aria-describedby="profit-modal-description"
+         >
+            <Box
+               sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 400,
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  boxShadow: 24,
+                  p: 4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+               }}
+               component="form"
+               onSubmit={handleProfitSubmit}
+            >
+               <Typography
+                  id="profit-modal-title"
+                  variant="h6"
+                  fontWeight="bold"
+                  mb={2}
+               >
+                  Add Project Profit
+               </Typography>
+               <TextField
+                  label="Profit Amount"
+                  type="number"
+                  value={profitForm.amount}
+                  onChange={(e) =>
+                     setProfitForm((prev) => ({
+                        ...prev,
+                        amount: e.target.value,
+                     }))
+                  }
+                  fullWidth
+                  required
+                  inputProps={{ min: 1 }}
+               />
+               <TextField
+                  label="Notes"
+                  multiline
+                  minRows={2}
+                  value={profitForm.notes}
+                  onChange={(e) =>
+                     setProfitForm((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                     }))
+                  }
+                  fullWidth
+               />
+               {profitError && <Alert severity="error">{profitError}</Alert>}
+               {profitSuccess && (
+                  <Alert severity="success">{profitSuccess}</Alert>
+               )}
+               <Box display="flex" justifyContent="flex-end" gap={2}>
+                  <Button
+                     onClick={() => setProfitModalOpen(false)}
+                     color="secondary"
+                     variant="outlined"
+                     disabled={profitSubmitting}
+                  >
+                     Cancel
+                  </Button>
+                  <Button
+                     type="submit"
+                     color="success"
+                     variant="contained"
+                     disabled={profitSubmitting}
+                  >
+                     {profitSubmitting ? 'Submitting...' : 'Submit Profit'}
+                  </Button>
+               </Box>
             </Box>
          </Modal>
       </Box>

@@ -54,7 +54,7 @@ const getAllTransactions = async (req, res) => {
                from: 'projects',
                localField: 'transactions.project',
                foreignField: '_id',
-               as: 'disbursementProject',
+               as: 'projectInfo',
             },
          },
          {
@@ -167,6 +167,18 @@ const getAllTransactions = async (req, res) => {
                      null,
                   ],
                },
+               // Add project field for profit_submission and other types
+               project: {
+                  $cond: [
+                     { $gt: [{ $size: '$projectInfo' }, 0] },
+                     {
+                        _id: { $arrayElemAt: ['$projectInfo._id', 0] },
+                        title: { $arrayElemAt: ['$projectInfo.title', 0] },
+                     },
+                     // fallback to null or just the ObjectId if you want
+                     '$transactions.project',
+                  ],
+               },
             },
          },
          {
@@ -194,6 +206,7 @@ const getAllTransactions = async (req, res) => {
                user: 1,
                investment: 1,
                disbursementProject: 1,
+               project: 1, // <-- include project in output
             },
          },
          { $sort: { timestamp: -1 } },
@@ -216,6 +229,13 @@ const getAllTransactions = async (req, res) => {
             project: { _id: null, title: null },
          },
          disbursementProject: t.disbursementProject || null,
+         // Normalize project: if it's an object, keep as is; if it's ObjectId, wrap as {_id: ...}
+         project:
+            t.project && typeof t.project === 'object'
+               ? t.project
+               : t.project
+               ? { _id: t.project }
+               : null,
       }));
 
       res.json(processedTransactions);
@@ -239,17 +259,53 @@ const getTransactionDetails = async (req, res) => {
             },
          });
 
+      if (!wallet) {
+         return res.status(404).json({ error: 'Wallet not found' });
+      }
+
       const transaction = wallet.transactions.id(transactionId);
       if (!transaction) {
          return res.status(404).json({ error: 'Transaction not found' });
+      }
+
+      // If it's a Campay transaction, check its current status
+      if (transaction.campayReference && transaction.status === 'pending') {
+         try {
+            const campayService = require('../../services/campayService');
+            const status = await campayService.checkTransactionStatus(
+               transaction.campayReference
+            );
+
+            if (
+               status.status === 'SUCCESSFUL' &&
+               transaction.status === 'pending'
+            ) {
+               // Update wallet balance for successful deposits
+               if (transaction.type === 'deposit') {
+                  wallet.balance += transaction.amount;
+               }
+               transaction.status = 'confirmed';
+               await wallet.save();
+            } else if (
+               status.status === 'FAILED' &&
+               transaction.status === 'pending'
+            ) {
+               transaction.status = 'failed';
+               await wallet.save();
+            }
+         } catch (error) {
+            console.error('Error checking Campay status:', error);
+         }
       }
 
       res.json({
          transaction,
          user: wallet.userId,
          walletBalance: wallet.balance,
+         lastChecked: new Date().toISOString(),
       });
    } catch (error) {
+      console.error('Transaction details error:', error);
       res.status(500).json({ error: error.message });
    }
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
    View,
    Text,
@@ -6,10 +6,12 @@ import {
    TouchableOpacity,
    StyleSheet,
    Alert,
+   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
+import AnimatedSplashScreen from '../../src/screens/AnimatedSplashScreen';
 
 const AuthScreen: React.FC = () => {
    const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +22,29 @@ const AuthScreen: React.FC = () => {
    const [loading, setLoading] = useState(false);
    const router = useRouter();
    const { login } = useAuth();
+
+   const formPosition = React.useRef(new Animated.Value(100)).current;
+   const formOpacity = React.useRef(new Animated.Value(0)).current;
+
+   const startFormAnimation = () => {
+      // Start form animation after logo slides up
+      Animated.sequence([
+         Animated.delay(200), // Wait for logo + text animations to complete
+         Animated.parallel([
+            Animated.spring(formPosition, {
+               toValue: 0,
+               useNativeDriver: true,
+               friction: 8,
+               tension: 40,
+            }),
+            Animated.timing(formOpacity, {
+               toValue: 1,
+               duration: 400,
+               useNativeDriver: true,
+            }),
+         ]),
+      ]).start();
+   };
 
    const handleAuth = async () => {
       try {
@@ -79,56 +104,74 @@ const AuthScreen: React.FC = () => {
 
    return (
       <View style={styles.container}>
-         <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
-         {!isLogin && (
+         <AnimatedSplashScreen onAnimationComplete={startFormAnimation} />
+         <Animated.View
+            style={[
+               styles.authContainer,
+               {
+                  transform: [{ translateY: formPosition }],
+                  opacity: formOpacity,
+               },
+            ]}
+         >
+            {!isLogin && (
+               <TextInput
+                  style={styles.input}
+                  placeholder="Username"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+               />
+            )}
             <TextInput
                style={styles.input}
-               placeholder="Username"
-               value={username}
-               onChangeText={setUsername}
+               placeholder="Email"
+               value={email}
+               onChangeText={setEmail}
+               keyboardType="email-address"
                autoCapitalize="none"
             />
-         )}
-         <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-         />
-         <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-         />
-         {!isLogin && (
             <TextInput
                style={styles.input}
-               placeholder="Confirm Password"
-               value={confirmPassword}
-               onChangeText={setConfirmPassword}
+               placeholder="Password"
+               value={password}
+               onChangeText={setPassword}
                secureTextEntry
             />
-         )}
-         <TouchableOpacity
-            style={styles.button}
-            onPress={handleAuth}
-            disabled={loading}
-         >
-            <Text style={styles.buttonText}>
-               {isLogin ? 'Login' : 'Sign Up'}
-            </Text>
-         </TouchableOpacity>
-         <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-            <Text style={styles.toggleText}>
-               {isLogin
-                  ? "Don't have an account? Sign Up"
-                  : 'Already have an account? Login'}
-            </Text>
-         </TouchableOpacity>
+            {!isLogin && (
+               <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+               />
+            )}
+            <TouchableOpacity
+               style={styles.button}
+               onPress={handleAuth}
+               disabled={loading}
+            >
+               <Text style={styles.buttonText}>
+                  {isLogin ? 'Login' : 'Sign Up'}
+               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+               <Text style={styles.toggleText}>
+                  {isLogin ? (
+                     <>
+                        Don't have an account?{' '}
+                        <Text style={styles.boldText}>Sign Up</Text>
+                     </>
+                  ) : (
+                     <>
+                        Already have an account?{' '}
+                        <Text style={styles.boldText}>Login</Text>
+                     </>
+                  )}
+               </Text>
+            </TouchableOpacity>
+         </Animated.View>
       </View>
    );
 };
@@ -137,30 +180,30 @@ const styles = StyleSheet.create({
    container: {
       flex: 1,
       backgroundColor: '#ffffff',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
    },
-   title: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      marginBottom: 20,
-      color: '#333333',
+   authContainer: {
+      position: 'absolute',
+      width: '100%',
+      top: '45%', // Positioned higher to account for slide up
+      paddingHorizontal: 20,
+      backgroundColor: 'transparent',
+      zIndex: 1,
    },
    input: {
       width: '100%',
-      height: 50,
+      height: 50, // Slightly smaller inputs
       borderWidth: 1,
       borderColor: '#cccccc',
       borderRadius: 8,
       paddingHorizontal: 10,
-      marginBottom: 15,
+      marginBottom: 12, // Reduced spacing between inputs
       fontSize: 16,
+      backgroundColor: 'rgba(255,255,255,0.8)', // Semi-transparent background
    },
    button: {
       width: '100%',
       height: 50,
-      backgroundColor: '#ffa726',
+      backgroundColor: '#2e7d32',
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: 8,
@@ -172,9 +215,15 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
    },
    toggleText: {
-      color: '#007bff',
-      fontSize: 14,
+      color: '#2e7d32',
+      alignItems: 'center',
+      textAlign: 'center',
+      fontSize: 18,
       marginTop: 10,
+   },
+   boldText: {
+      fontWeight: 'bold',
+      color: '#2e7d32',
    },
 });
 
