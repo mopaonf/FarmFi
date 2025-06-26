@@ -43,7 +43,7 @@ const Header = () => {
                   noWrap
                   sx={{ fontWeight: 600 }}
                >
-                  FarmFi
+                  AgriVest
                </Typography>
             </Box>
             <Box sx={{ flexGrow: 1 }} />

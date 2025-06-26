@@ -112,7 +112,7 @@ const Sidebar = () => {
                            alt="profile-user"
                            width="100px"
                            height="100px"
-                           src={`../../assets/user.png`}
+                           src={`../../assets/ges.jpg`}
                            style={{ cursor: 'pointer', borderRadius: '50%' }}
                         />
                      </Box>
@@ -129,7 +129,7 @@ const Sidebar = () => {
                            variant="h5"
                            color={colors.greenAccent[500]}
                         >
-                           FarmFi Admin
+                           AgriVest Admin
                         </Typography>
                      </Box>
                   </Box>

@@ -650,9 +650,7 @@ const getProfitReleaseHistory = async (req, res) => {
       // We'll use lastProfitReleasedAt and keep a history array on the project
       // If not present, fallback to profitSubmissions with status 'approved' and released
       // For now, let's assume we store a profitReleaseHistory array on the project
-      // If not, fallback to lastProfitReleasedAt and totalProfit
-
-      // If you have a profitReleaseHistory array:
+      // If not, fallback to lastProfitReleasedAt and last released amount
       if (
          project.profitReleaseHistory &&
          Array.isArray(project.profitReleaseHistory)
@@ -684,11 +682,207 @@ const getProfitReleaseHistory = async (req, res) => {
    }
 };
 
+// Utility to update project locations with coordinates
+const updateProjectLocations = async (req, res) => {
+   try {
+      // Define Cameroon bounding box
+      const CAMEROON_BOUNDS = {
+         north: 13.0833,
+         south: 1.6546,
+         west: 8.3822,
+         east: 16.1921,
+      };
+
+      // Check if coordinates are within Cameroon
+      const isInCameroon = (lat, lng) => {
+         return (
+            lat >= CAMEROON_BOUNDS.south &&
+            lat <= CAMEROON_BOUNDS.north &&
+            lng >= CAMEROON_BOUNDS.west &&
+            lng <= CAMEROON_BOUNDS.east
+         );
+      };
+
+      // Cameroon coordinates for different project types
+      const sampleLocations = {
+         maize: {
+            lat: 10.2,
+            lng: 14.3,
+            radius: 0.5,
+            addresses: [
+               'Garoua, North Region',
+               'Maroua, Far North Region',
+               'Yagoua, Far North Region',
+            ],
+         },
+         coffee: {
+            lat: 5.5,
+            lng: 10.4,
+            radius: 0.3,
+            addresses: [
+               'Bafoussam, West Region',
+               'Dschang, West Region',
+               'Nkongsamba, Littoral Region',
+            ],
+         },
+         avocado: {
+            lat: 4.2,
+            lng: 9.3,
+            radius: 0.4,
+            addresses: [
+               'Buea, Southwest Region',
+               'Limbe, Southwest Region',
+               'Kumba, Southwest Region',
+            ],
+         },
+         rice: {
+            lat: 8.6,
+            lng: 13.7,
+            radius: 0.6,
+            addresses: [
+               'Yagoua, Far North Region',
+               'Kousseri, Far North Region',
+               'Kaele, Far North Region',
+            ],
+         },
+         banana: {
+            lat: 4.05,
+            lng: 9.76,
+            radius: 0.4,
+            addresses: [
+               'Douala, Littoral Region',
+               'Tiko, Southwest Region',
+               'Penja, Littoral Region',
+            ],
+         },
+         default: {
+            lat: 7.3697,
+            lng: 12.3547,
+            radius: 2.0,
+            addresses: [
+               'Ngaoundéré, Adamawa Region',
+               'Yaoundé, Centre Region',
+               'Bertoua, East Region',
+               'Bamenda, Northwest Region',
+            ],
+         },
+      };
+
+      // Generate random coordinates within Cameroon for a given project category
+      const getCameroonCoordinates = (project) => {
+         const category = project.category?.toLowerCase() || '';
+         let region = sampleLocations.default;
+
+         if (category.includes('maize')) region = sampleLocations.maize;
+         else if (category.includes('coffee')) region = sampleLocations.coffee;
+         else if (category.includes('avocado'))
+            region = sampleLocations.avocado;
+         else if (category.includes('rice')) region = sampleLocations.rice;
+         else if (category.includes('banana')) region = sampleLocations.banana;
+
+         // Add some random variation within the region
+         const randomLat = region.lat + (Math.random() - 0.5) * region.radius;
+         const randomLng = region.lng + (Math.random() - 0.5) * region.radius;
+
+         // Select a random address from the region's address list
+         const randomAddressIndex = Math.floor(
+            Math.random() * region.addresses.length
+         );
+         const address = region.addresses[randomAddressIndex];
+
+         return {
+            lat: randomLat,
+            lng: randomLng,
+            address: address,
+         };
+      };
+
+      // Find ALL projects to check and possibly update locations
+      const projects = await Project.find({});
+
+      if (!projects.length) {
+         return res.json({ message: 'No projects to update' });
+      }
+
+      // Track the number of updates made
+      let updatedCount = 0;
+      let resetCount = 0;
+
+      // Update each project to ensure location is in Cameroon
+      for (const project of projects) {
+         let locationObj;
+         let needsUpdate = false;
+
+         // Case 1: Location is a string (old format)
+         if (typeof project.location === 'string') {
+            // Convert to object with Cameroon coordinates
+            needsUpdate = true;
+            const existingAddress = project.location;
+            const cameroonCoords = getCameroonCoordinates(project);
+            locationObj = {
+               address: existingAddress || cameroonCoords.address,
+               lat: cameroonCoords.lat,
+               lng: cameroonCoords.lng,
+            };
+            resetCount++;
+         }
+         // Case 2: Location doesn't exist or is empty object
+         else if (
+            !project.location ||
+            Object.keys(project.location).length === 0
+         ) {
+            needsUpdate = true;
+            locationObj = getCameroonCoordinates(project);
+            updatedCount++;
+         }
+         // Case 3: Missing lat/lng coordinates
+         else if (!project.location.lat || !project.location.lng) {
+            needsUpdate = true;
+            const existingAddress = project.location.address;
+            const cameroonCoords = getCameroonCoordinates(project);
+            locationObj = {
+               address: existingAddress || cameroonCoords.address,
+               lat: cameroonCoords.lat,
+               lng: cameroonCoords.lng,
+            };
+            updatedCount++;
+         }
+         // Case 4: Location exists but coordinates are outside Cameroon
+         else if (!isInCameroon(project.location.lat, project.location.lng)) {
+            needsUpdate = true;
+            const existingAddress = project.location.address;
+            const cameroonCoords = getCameroonCoordinates(project);
+            locationObj = {
+               address: existingAddress || cameroonCoords.address,
+               lat: cameroonCoords.lat,
+               lng: cameroonCoords.lng,
+            };
+            resetCount++;
+         }
+
+         if (needsUpdate && locationObj) {
+            project.location = locationObj;
+            await project.save();
+         }
+      }
+
+      res.json({
+         success: true,
+         message: `Updated ${updatedCount} projects with new coordinates and reset ${resetCount} locations to be within Cameroon`,
+         totalProjects: projects.length,
+      });
+   } catch (error) {
+      console.error('Error updating project locations:', error);
+      res.status(500).json({ error: error.message });
+   }
+};
+
 module.exports = {
    createProject,
    getAllProjects,
    getProjectById,
    updateProjectStatus,
+   updateProjectLocations,
    getProjectFundingStatus,
    getProjectFundingProgress,
    getFarmerTotalInvestment,
@@ -700,4 +894,5 @@ module.exports = {
    rejectProfitSubmission,
    releaseProfitToInvestors,
    getProfitReleaseHistory,
+   updateProjectLocations,
 };

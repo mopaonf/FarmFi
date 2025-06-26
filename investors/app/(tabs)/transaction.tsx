@@ -15,6 +15,7 @@ import TabSwitcher from '../../components/TabSwitcher';
 import TransactionHistoryItem from '../../components/TransactionHistoryItem';
 import ProjectUpdateItem from '../../components/ProjectUpdateItem';
 import SearchBar from '../../components/SearchBar';
+import ProjectLocationButton from '../../components/ProjectLocationButton';
 
 interface Transaction {
    type: 'deposit' | 'withdrawal' | 'investment' | 'payout';
@@ -29,12 +30,45 @@ interface Transaction {
    };
 }
 
+interface Project {
+   _id: string;
+   name?: string;
+   title?: string;
+   description: string;
+   updates: ProjectUpdate[];
+   fundingProgress?: number;
+   funding_progress?: number; // Backend uses this field name
+   status?: string;
+   fundingStatus?: string; // Backend uses this field name
+   expectedReturn?: number;
+   expected_roi_range?: string;
+   unitPrice?: number;
+}
+
+interface ProjectUpdate {
+   title: string;
+   date: string;
+   images: string[];
+}
+
+interface UserInvestment {
+   _id: string;
+   project: Project;
+   amount: number;
+   units: number;
+   status: string;
+   createdAt?: string;
+   updatedAt?: string;
+}
+
 const TransactionScreen: React.FC = () => {
    const [transactions, setTransactions] = useState<Transaction[]>([]);
    const [filteredTransactions, setFilteredTransactions] = useState<
       Transaction[]
    >([]);
+   const [userInvestments, setUserInvestments] = useState<UserInvestment[]>([]);
    const [loading, setLoading] = useState(true);
+   const [loadingInvestments, setLoadingInvestments] = useState(true);
    const [activeTab, setActiveTab] = React.useState<'history' | 'updates'>(
       'history'
    );
@@ -44,7 +78,7 @@ const TransactionScreen: React.FC = () => {
       try {
          const token = await AsyncStorage.getItem('token');
          const response = await fetch(
-            'http://192.168.5.1:5000/api/wallets/transactions',
+            'http://172.20.10.5:5000/api/wallets/transactions',
             {
                headers: {
                   Authorization: `Bearer ${token}`,
@@ -65,16 +99,58 @@ const TransactionScreen: React.FC = () => {
          setLoading(false);
       }
    };
+   const fetchUserInvestments = async () => {
+      try {
+         setLoadingInvestments(true);
+         const token = await AsyncStorage.getItem('token');
+         if (!token) {
+            throw new Error('No authentication token found');
+         }
+
+         const response = await fetch(
+            'http://172.20.10.5:5000/api/investments/my-investments',
+            {
+               headers: {
+                  Authorization: `Bearer ${token}`,
+               },
+            }
+         );
+
+         if (!response.ok) {
+            throw new Error('Failed to fetch investments');
+         }
+
+         const data = await response.json();
+         console.log('Fetched investments data:', data);
+         console.log(
+            'First investment project structure:',
+            data.length > 0 ? data[0].project : 'No investments'
+         );
+
+         // Ensure data is an array before setting it
+         setUserInvestments(Array.isArray(data) ? data : []);
+      } catch (error) {
+         console.error('Error fetching user investments:', error);
+         setUserInvestments([]);
+      } finally {
+         setLoadingInvestments(false);
+      }
+   };
 
    useEffect(() => {
       fetchTransactions();
+      fetchUserInvestments();
    }, []);
 
    const onRefresh = useCallback(async () => {
       setRefreshing(true);
-      await fetchTransactions();
+      if (activeTab === 'history') {
+         await fetchTransactions();
+      } else {
+         await fetchUserInvestments();
+      }
       setRefreshing(false);
-   }, []);
+   }, [activeTab]);
 
    const handleSearch = (searchText: string) => {
       if (!searchText.trim()) {
@@ -221,37 +297,169 @@ const TransactionScreen: React.FC = () => {
          );
       }
 
+      // Updates tab
+      if (loadingInvestments) {
+         return (
+            <View className="flex-1 justify-center items-center">
+               <ActivityIndicator size="large" color={Colors.light.primary} />
+            </View>
+         );
+      }
+
+      // Ensure userInvestments is an array before using map()
+      const investments = Array.isArray(userInvestments) ? userInvestments : [];
+
+      if (investments.length === 0) {
+         return (
+            <View className="flex-1 justify-center items-center p-4">
+               <Text className="text-gray-500 text-center">
+                  You haven't invested in any projects yet
+               </Text>
+            </View>
+         );
+      }
+
+      // Group investments by project ID and sum up total units
+      const projectSummaries = investments.reduce<Record<string, any>>(
+         (acc, investment) => {
+            if (
+               investment.project &&
+               (investment.project._id ||
+                  investment.project.title ||
+                  investment.project.name)
+            ) {
+               const projectId = String(
+                  investment.project._id ||
+                     investment.project.title ||
+                     investment.project.name
+               );
+
+               if (!acc[projectId]) {
+                  acc[projectId] = {
+                     project: investment.project,
+                     totalUnitsInvested: 0,
+                     totalAmountInvested: 0,
+                     investmentDate:
+                        investment.createdAt || new Date().toISOString(),
+                  };
+               }
+
+               // Sum up units and amount for this project
+               acc[projectId].totalUnitsInvested += investment.units || 0;
+               acc[projectId].totalAmountInvested += investment.amount || 0;
+
+               // Keep track of earliest investment date
+               const currentDate = new Date(investment.createdAt || new Date());
+               const existingDate = new Date(acc[projectId].investmentDate);
+               if (currentDate < existingDate) {
+                  acc[projectId].investmentDate = investment.createdAt;
+               }
+            }
+            return acc;
+         },
+         {}
+      );
+
+      // Convert to array
+      const projectSummaryList = Object.values(projectSummaries);
+
+      // Sort projects by name/title for consistency
+      projectSummaryList.sort((a, b) => {
+         const nameA = (a.project.title || a.project.name || '').toLowerCase();
+         const nameB = (b.project.title || b.project.name || '').toLowerCase();
+         return nameA.localeCompare(nameB);
+      });
+
+      console.log(
+         `Found ${investments.length} investments across ${projectSummaryList.length} unique projects`
+      );
+
       return (
-         <ScrollView className="flex-1 px-4">
-            <ProjectUpdateItem
-               projectName="Durian Investment"
-               stages={[
-                  {
-                     title: 'Planting Seeds',
-                     date: '2024-01-01',
-                     images: [
-                        'path/to/seed1.jpg',
-                        'path/to/seed2.jpg',
-                        'path/to/seed3.jpg',
-                     ],
-                  },
-                  {
-                     title: 'Land Cultivation',
-                     date: '2024-01-15',
-                     images: ['path/to/land1.jpg', 'path/to/land2.jpg'],
-                  },
-               ]}
-            />
-            <ProjectUpdateItem
-               projectName="Corn Partnership with Sipurio Farmer Group"
-               stages={[
-                  {
-                     title: 'Initial Planting',
-                     date: '2024-01-05',
-                     images: ['path/to/corn1.jpg', 'path/to/corn2.jpg'],
-                  },
-               ]}
-            />
+         <ScrollView
+            className="flex-1 px-4"
+            refreshControl={
+               <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#2e7d32']}
+                  tintColor="#2e7d32"
+               />
+            }
+         >
+            <View className="my-3 mx-2">
+               <ProjectLocationButton />
+            </View>
+
+            {projectSummaryList.map((summary, index) => {
+               // Extract project data
+               const project = summary.project;
+
+               // Ensure all fields have values or reasonable defaults
+               const returnRate = parseFloat(
+                  project.expectedReturn ||
+                     (project.expected_roi_range
+                        ? project.expected_roi_range.split('-')[0]
+                        : '10')
+               );
+
+               const unitPrice = project.unitPrice || 1000;
+
+               const expectedProfit =
+                  project.expectedProfit ||
+                  summary.totalAmountInvested * (returnRate / 100);
+
+               // Use the correct field names from the backend
+               const fundingProgress =
+                  typeof project.funding_progress !== 'undefined'
+                     ? project.funding_progress
+                     : typeof project.fundingProgress !== 'undefined'
+                     ? project.fundingProgress
+                     : 0;
+
+               const projectStatus =
+                  project.fundingStatus || project.status || '';
+
+               console.log(
+                  `Project ${
+                     project.title || project.name || 'Unknown'
+                  } - Status: ${projectStatus}, Progress: ${fundingProgress}`
+               );
+
+               return (
+                  <ProjectUpdateItem
+                     key={project._id || index}
+                     projectId={project._id}
+                     projectName={
+                        project.title || project.name || 'Unnamed Project'
+                     }
+                     description={
+                        project.description ||
+                        'This farming project aims to deliver sustainable returns while promoting agricultural development.'
+                     }
+                     stages={
+                        project.updates && project.updates.length > 0
+                           ? project.updates
+                           : [
+                                {
+                                   title: 'Project Started',
+                                   date: new Date(
+                                      summary.investmentDate || new Date()
+                                   ).toLocaleDateString(),
+                                   images: [],
+                                },
+                             ]
+                     }
+                     totalUnitsInvested={summary.totalUnitsInvested}
+                     unitPrice={unitPrice}
+                     totalAmountInvested={summary.totalAmountInvested} // Pass the actual total amount invested
+                     returnRate={returnRate}
+                     investmentDate={summary.investmentDate}
+                     expectedProfit={expectedProfit}
+                     fundingProgress={fundingProgress}
+                     status={projectStatus}
+                  />
+               );
+            })}
          </ScrollView>
       );
    };
@@ -274,12 +482,16 @@ const TransactionScreen: React.FC = () => {
          <View className="pt-2 px-6">
             <SearchBar
                onSearch={handleSearch}
-               placeholder="Search transactions..."
+               placeholder={
+                  activeTab === 'history'
+                     ? 'Search transactions...'
+                     : 'Search projects...'
+               }
             />
          </View>
 
          <TabSwitcher activeTab={activeTab} onTabChange={setActiveTab} />
-         {loading ? (
+         {loading && activeTab === 'history' ? (
             <View className="flex-1 justify-center items-center">
                <ActivityIndicator size="large" color={Colors.light.primary} />
             </View>

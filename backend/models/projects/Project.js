@@ -17,8 +17,18 @@ const ProjectSchema = new mongoose.Schema(
          enum: ['crop', 'livestock', 'processing'],
       },
       location: {
-         type: String,
-         required: true,
+         address: {
+            type: String,
+            required: true,
+         },
+         lat: {
+            type: Number,
+            default: null,
+         },
+         lng: {
+            type: Number,
+            default: null,
+         },
       },
       land_size: {
          type: Number,

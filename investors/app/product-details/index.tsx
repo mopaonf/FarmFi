@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import SingleProjectMapButton from '../../components/SingleProjectMapButton';
 
 const { height, width } = Dimensions.get('window');
 
@@ -65,7 +66,7 @@ const ProductDetailsScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const res = await fetch(
-               `http://192.168.5.1:5000/api/projects/${id}`
+               `http://172.20.10.5:5000/api/projects/${id}`
             );
             const data = await res.json();
             setProject(data);
@@ -179,7 +180,7 @@ const ProductDetailsScreen: React.FC = () => {
 
                {/* Pagination Dots - Simplified */}
                <View className="absolute bottom-4 flex-row justify-center w-full gap-2">
-                  {slides.map((_, index: number) => (
+                  {slides.map((_: any, index: number) => (
                      <View
                         key={index}
                         className={`h-2 rounded-full ${
@@ -265,22 +266,22 @@ const ProductDetailsScreen: React.FC = () => {
                         <View className="flex-row flex-wrap justify-between mb-8">
                            {[
                               {
-                                 icon: 'clock',
+                                 icon: 'clock' as const,
                                  label: 'First Return',
                                  value: project.return_start_year_or_month,
                               },
                               {
-                                 icon: 'trending-up',
+                                 icon: 'trending-up' as const,
                                  label: 'Return /year',
                                  value: project.expected_roi_range,
                               },
                               {
-                                 icon: 'file-text',
+                                 icon: 'file-text' as const,
                                  label: 'Contract',
                                  value: project.contract_duration,
                               },
                               {
-                                 icon: 'box',
+                                 icon: 'box' as const,
                                  label: 'Available Units',
                                  value:
                                     project.totalUnits -
@@ -332,23 +333,39 @@ const ProductDetailsScreen: React.FC = () => {
                            {project.description}
                         </Text>
 
-                        {/* Location Section - Moved up and styled */}
+                        {/* Location Section - Updated for new location structure */}
                         <View className="bg-gray-50 rounded-xl p-4 mb-20">
-                           <Text
-                              style={{
-                                 fontFamily: 'SF Pro Display',
-                                 fontWeight: '600',
-                              }}
-                              className="text-lg mb-3"
-                           >
-                              Location
-                           </Text>
+                           <View className="flex-row justify-between items-center mb-3">
+                              <Text
+                                 style={{
+                                    fontFamily: 'SF Pro Display',
+                                    fontWeight: '600',
+                                 }}
+                                 className="text-lg"
+                              >
+                                 Location
+                              </Text>
+                              <SingleProjectMapButton
+                                 projectId={project._id}
+                                 buttonText="View on Map"
+                                 small={true}
+                              />
+                           </View>
                            <Text
                               style={{ fontFamily: 'SF Pro Display' }}
                               className="text-gray-600"
                            >
-                              {project.location}
+                              {project.location?.address ||
+                                 (typeof project.location === 'string'
+                                    ? project.location
+                                    : 'Location details not available')}
                            </Text>
+                           {project.location?.lat && project.location?.lng && (
+                              <Text className="text-gray-500 mt-2 text-sm">
+                                 Coordinates: {project.location.lat.toFixed(4)},{' '}
+                                 {project.location.lng.toFixed(4)}
+                              </Text>
+                           )}
                         </View>
                      </>
                   ) : (

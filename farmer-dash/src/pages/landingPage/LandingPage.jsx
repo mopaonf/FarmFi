@@ -137,7 +137,7 @@ const FarmFiLanding = () => {
          name: 'John Smith',
          location: 'Iowa Corn Farm',
          rating: 5,
-         text: 'FarmFi transformed my farming business. Quick loans and excellent support.',
+         text: 'AgriVest transformed my farming business. Quick loans and excellent support.',
          avatar: 'JS',
       },
       {
@@ -187,7 +187,7 @@ const FarmFiLanding = () => {
                      component="div"
                      sx={{ fontWeight: 'bold', color: primaryGreen }}
                   >
-                     FarmFi
+                     AgriVest
                   </Typography>
                </Box>
 
@@ -981,7 +981,7 @@ const FarmFiLanding = () => {
                   sx={{ mb: 4, opacity: 0.9, lineHeight: 1.6 }}
                >
                   Join thousands of farmers who have already revolutionized
-                  their agricultural business with FarmFi
+                  their agricultural business with AgriVest
                </Typography>
                <Box
                   sx={{
@@ -1052,7 +1052,7 @@ const FarmFiLanding = () => {
                               <Leaf size={20} />
                            </Avatar>
                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                              FarmFi
+                              AgriVest
                            </Typography>
                         </Box>
                         <Typography
@@ -1176,7 +1176,7 @@ const FarmFiLanding = () => {
                      >
                         {[
                            { icon: Phone, text: '+1 (555) 123-4567' },
-                           { icon: Email, text: 'support@farmfi.com' },
+                           { icon: Email, text: 'support@agriVest.com' },
                            {
                               icon: MapPin,
                               text: '123 Agriculture St, Farm City',
@@ -1209,7 +1209,7 @@ const FarmFiLanding = () => {
                   variant="body2"
                   sx={{ textAlign: 'center', color: 'grey.400' }}
                >
-                  © 2025 FarmFi. All rights reserved. | Privacy Policy | Terms
+                  © 2025 AgriVest. All rights reserved. | Privacy Policy | Terms
                   of Service
                </Typography>
             </Container>

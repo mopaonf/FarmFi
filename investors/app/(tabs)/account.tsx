@@ -64,7 +64,7 @@ const AccountScreen: React.FC = () => {
          if (!token || !user?._id) return;
 
          const response = await fetch(
-            `http://192.168.5.1:5000/api/wallets/stats`,
+            `http://172.20.10.5:5000/api/wallets/stats`,
             {
                headers: { Authorization: `Bearer ${token}` },
             }

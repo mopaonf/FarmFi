@@ -18,7 +18,7 @@ const ProductDetailScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const response = await fetch(
-               `http://192.168.5.1:5000/api/projects/${id}`
+               `http://172.20.10.5:5000/api/projects/${id}`
             );
             const data = await response.json();
             if (!response.ok)

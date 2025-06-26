@@ -103,7 +103,7 @@ const Auth = () => {
                   fontWeight="bold"
                   color={colors.grey[100]}
                >
-                  FarmFi Admin
+                  AgriVest Admin
                </Typography>
                <Typography
                   variant="body1"

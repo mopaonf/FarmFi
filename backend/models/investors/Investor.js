@@ -9,6 +9,7 @@ const investorSchema = new mongoose.Schema(
       phone: { type: String, required: false },
       type: { type: String, required: true, enum: ['Individual', 'Corporate'] },
       totalInvestment: { type: Number, default: 0 },
+      wallet: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet' },
    },
    { timestamps: true }
 );

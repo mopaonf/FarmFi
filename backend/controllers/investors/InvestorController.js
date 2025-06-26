@@ -42,13 +42,18 @@ const signup = async (req, res) => {
       });
       await investor.save();
 
-      // Create wallet for new investor
+      // Create wallet for new investor with required userType field
       const wallet = new Wallet({
          userId: investor._id,
+         userType: 'Investor', // This is the required field that was missing
          balance: 0,
          transactions: [],
       });
       await wallet.save();
+
+      // Update investor with wallet reference
+      investor.wallet = wallet._id;
+      await investor.save();
 
       // Remove password from response
       const investorResponse = investor.toObject();

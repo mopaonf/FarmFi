@@ -13,7 +13,7 @@ const Footer = () => {
          }}
       >
          <Typography variant="body1" mb={2}>
-            &copy; 2023 FarmFi. All rights reserved.
+            &copy; 2023 AgriVest. All rights reserved.
          </Typography>
          <Box
             sx={{

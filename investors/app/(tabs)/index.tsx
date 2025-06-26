@@ -30,7 +30,7 @@ const HomeScreen: React.FC = () => {
    const fetchProjects = async () => {
       try {
          const res = await fetch(
-            'http://192.168.5.1:5000/api/projects?status=Active'
+            'http://172.20.10.5:5000/api/projects?status=Active'
          );
          const data = await res.json();
          const projectsData = Array.isArray(data) ? data : [];

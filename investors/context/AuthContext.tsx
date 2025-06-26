@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
    _id: string;
@@ -27,9 +28,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setToken(token);
    };
 
-   const logout = () => {
+   const logout = async () => {
+      // Clear the auth state
       setUser(null);
       setToken(null);
+
+      // Also clear from AsyncStorage
+      try {
+         await AsyncStorage.removeItem('token');
+         await AsyncStorage.removeItem('user');
+      } catch (error) {
+         console.error('Error clearing auth data:', error);
+      }
    };
 
    return (

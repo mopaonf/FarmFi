@@ -244,6 +244,39 @@ const getInvestments = async (req, res) => {
    }
 };
 
+// Get investments for the authenticated investor
+const getInvestorInvestments = async (req, res) => {
+   try {
+      const userId = req.user.userId;
+      console.log('Fetching investments for investor ID:', userId);
+
+      // Find all investments for this investor
+      const investments = await Investment.find({
+         investor: userId,
+         // Include all investments, not just confirmed ones for testing
+      }).populate({
+         path: 'project',
+         select:
+            'title name description updates category duration fundingStatus expectedReturn location',
+         // Added title field which is likely the project name field in your schema
+      });
+
+      if (!investments || investments.length === 0) {
+         console.log('No investments found for investor:', userId);
+         return res.json([]);
+      }
+
+      console.log(
+         `Found ${investments.length} investments for investor ${userId}`
+      );
+      console.log('First investment project:', investments[0].project);
+      res.json(investments);
+   } catch (error) {
+      console.error('Error fetching investor investments:', error);
+      res.status(500).json({ error: error.message });
+   }
+};
+
 module.exports = {
    getPendingInvestments,
    confirmInvestment,
@@ -251,5 +284,6 @@ module.exports = {
    getInvestmentDetails,
    getInvestmentStats,
    getInvestmentsByProject,
-   getInvestments, // <-- export this
+   getInvestments,
+   getInvestorInvestments,
 };

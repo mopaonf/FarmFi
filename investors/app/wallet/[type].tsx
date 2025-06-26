@@ -111,10 +111,10 @@ const WalletOperationScreen: React.FC = () => {
 
          console.log(
             'Sending request to:',
-            `http://192.168.5.1:5000/api/wallets/${type}`
+            `http://172.20.10.5:5000/api/wallets/${type}`
          );
          const response = await fetch(
-            `http://192.168.5.1:5000/api/wallets/${type}`,
+            `http://172.20.10.5:5000/api/wallets/${type}`,
             {
                method: 'POST',
                headers: {
@@ -151,7 +151,7 @@ const WalletOperationScreen: React.FC = () => {
                            // Force refresh wallet data before going back
                            const token = await AsyncStorage.getItem('token');
                            await fetch(
-                              'http://192.168.5.1:5000/api/wallets/stats',
+                              'http://172.20.10.5:5000/api/wallets/stats',
                               {
                                  headers: { Authorization: `Bearer ${token}` },
                               }

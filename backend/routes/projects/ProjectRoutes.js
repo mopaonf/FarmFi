@@ -5,13 +5,14 @@ const {
    getProjectById,
    updateProjectStatus,
    getProjectFundingProgress,
-   getFarmerTotalInvestment, // <-- Add this
-   approveProjectCompletion, // <-- Add this
-   approveProjectProfit, // <-- Add this
+   getFarmerTotalInvestment,
+   approveProjectCompletion,
+   approveProjectProfit,
    approveProfitSubmission,
    rejectProfitSubmission,
    releaseProfitToInvestors,
    getProfitReleaseHistory,
+   updateProjectLocations,
 } = require('../../controllers/projects/ProjectController');
 const authMiddleware = require('../../middleware/farmers/authMiddleware');
 const adminAuth = require('../../middleware/admins/authMiddleware');
@@ -42,7 +43,13 @@ router.patch(
 );
 // Add admin endpoint to release profit to investors
 router.post('/:id/release-profit', adminAuth, releaseProfitToInvestors);
-// Add endpoint to get profit release history for a project
+// Add admin endpoint to get profit release history for a project
 router.get('/:id/profit-releases', adminAuth, getProfitReleaseHistory);
+// Admin endpoint to ensure all project locations are within Cameroon
+// This endpoint will:
+// 1. Reset any locations outside of Cameroon to be within Cameroon's boundaries
+// 2. Assign appropriate regional coordinates based on crop category
+// 3. Ensure all projects have proper location structure (address, lat, lng)
+router.post('/update-locations', adminAuth, updateProjectLocations);
 
 module.exports = router;

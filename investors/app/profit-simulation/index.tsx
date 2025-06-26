@@ -36,7 +36,7 @@ const ProfitSimulationScreen: React.FC = () => {
       const fetchProject = async () => {
          try {
             const res = await fetch(
-               `http://192.168.5.1:5000/api/projects/${id}`
+               `http://172.20.10.5:5000/api/projects/${id}`
             );
             const data = await res.json();
             setProject(data);
@@ -96,7 +96,7 @@ const ProfitSimulationScreen: React.FC = () => {
       try {
          const token = await AsyncStorage.getItem('token');
          const response = await fetch(
-            'http://192.168.5.1:5000/api/wallets/stats',
+            'http://172.20.10.5:5000/api/wallets/stats',
             {
                headers: { Authorization: `Bearer ${token}` },
             }
@@ -143,7 +143,7 @@ const ProfitSimulationScreen: React.FC = () => {
       try {
          const token = await AsyncStorage.getItem('token');
          const response = await fetch(
-            'http://192.168.5.1:5000/api/wallets/invest',
+            'http://172.20.10.5:5000/api/wallets/invest',
             {
                method: 'POST',
                headers: {

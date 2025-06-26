@@ -496,7 +496,10 @@ exports.handlePaymentWebhook = async (req, res) => {
 
 exports.getTransactions = async (req, res) => {
    try {
-      const wallet = await Wallet.findOne({ userId: req.user.id })
+      console.log('Getting transactions for user:', req.user);
+
+      // Fix: Changed req.user.id to req.user.userId for consistency
+      const wallet = await Wallet.findOne({ userId: req.user.userId })
          .populate({
             path: 'transactions.project',
             select: 'title description unitPrice',
@@ -509,8 +512,11 @@ exports.getTransactions = async (req, res) => {
          });
 
       if (!wallet) {
+         console.log('Wallet not found for user:', req.user.userId);
          return res.status(404).json({ message: 'Wallet not found' });
       }
+
+      console.log('Found wallet:', wallet._id);
 
       const transactions = wallet.transactions.map((t) => {
          const trans = t.toObject();
